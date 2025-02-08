@@ -8,6 +8,7 @@ from users.user_management import init_db, User, db
 from dotenv import load_dotenv
 import os
 import random
+import base64
 
 load_dotenv()
 
@@ -178,6 +179,7 @@ def save_content():
 # ------------------------------------------------------------------------------
 # Search Content Endpoint: now requires a logged-in user.
 # ------------------------------------------------------------------------------
+
 @app.route('/api/search', methods=['GET'])
 @require_auth
 def search_content():
@@ -186,8 +188,7 @@ def search_content():
         if not query:
             return jsonify({'error': 'No query provided'}), 400
 
-        # If the 'types' query parameter is provided, split it into a list.
-        # Otherwise, default to searching all types.
+        # Determine which content types to search (default: all)
         types_param = request.args.get('types')
         if types_param:
             types = [t.strip().lower() for t in types_param.split(',')]
@@ -206,16 +207,38 @@ def search_content():
 
         # Search image items if requested
         if 'image' in types:
-            image_results = image_handler.retrieve_images(
+            image_results = image_handler.search_images(
                 user_id=request.user.id,
                 query=query
             )
+            # Process the image search results:
+            # The returned 'uris' field is a list of lists; for each URI, read the file
+            # and convert its contents into a base64-encoded data URI.
+            if image_results and "uris" in image_results:
+                data_result = []  # this will mirror the structure of image_results["uris"]
+                for uri_list in image_results["uris"]:
+                    base64_images = []
+                    for uri in uri_list:
+                        if uri and os.path.exists(uri):
+                            with open(uri, "rb") as f:
+                                img_bytes = f.read()
+                            # Determine the file extension for the MIME type.
+                            ext = os.path.splitext(uri)[1][1:]  # remove the leading dot
+                            base64_str = base64.b64encode(img_bytes).decode("utf-8")
+                            base64_image = f"data:image/{ext};base64,{base64_str}"
+                            base64_images.append(base64_image)
+                        else:
+                            base64_images.append(None)
+                    data_result.append(base64_images)
+                # Add the base64-encoded image data to the result under a new key.
+                image_results["data"] = data_result
+
             results['image'] = image_results
 
         # Search audio items if requested
         if 'audio' in types:
-            # Assuming your AudioHandler implements a similar interface:
-            audio_results = audio_handler.retrieve_audios(
+            # Assuming your AudioHandler implements a similar method.
+            audio_results = audio_handler.retrieve_audio(
                 user_id=request.user.id,
                 query=query
             )
@@ -232,7 +255,6 @@ def search_content():
             'status': 'error',
             'message': str(e)
         }), 500
-
 
 @app.route('/')
 def home():
