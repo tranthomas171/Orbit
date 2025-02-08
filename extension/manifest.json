@@ -1,27 +1,36 @@
 {
-    "manifest_version": 3,
-    "name": "Orbit",
-    "version": "1.0",
-    "description": "Save text, images, URLs, videos, and webpages to ORBIT",
-    "permissions": [
-      "contextMenus",
-      "activeTab",
-      "storage",
-      "scripting"
-    ],
-    "host_permissions": [
-      "<all_urls>"
-    ],
-    "background": {
-      "service_worker": "background.js"
-    },
-    "action": {
-      "default_popup": "popup.html",
-      "default_icon": {
-        "16": "icons/icon16.png"
-      }
-    },
-    "icons": {
+  "manifest_version": 3,
+  "name": "Orbit",
+  "version": "1.0",
+  "description": "Save text, images, URLs, videos, and webpages to ORBIT",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsyf2BJ02SyZrqxFHNpB5cKuW/I+A0274QOofguUEEHplg1EFzxRbQKa+wcJeIrSPMhkilofVmNmrotWRb+X8IpFcV4J9f+hchJ2WYZJX4QOTddYkPasej9FsraZJaBmgP0AF/KqP8AnuvyJG7C2HhTjlU6kJnbk8QqFv8M7lu1atHrAPaAt5OG/shpbvokXLtGeQDtFbfTNtux3gs7w1igSDlOHUWuUy/RoXSxA7z21IGJUx73ZPhnbEzFkHCU+im1Xk6DebBR3jzb9KYp8paqVOEXljQtkCGWVUUU+cVZ5eulPYanZC1aUKVpUFnwhBWm22dVDOLLUXXnuFogZXEwIDAQAB",
+  "permissions": [
+    "contextMenus",
+    "activeTab",
+    "storage",
+    "scripting",
+    "identity"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "oauth2": {
+    "client_id": "392500337084-ogt5du6i7keims62nb1dsr2h7e3bbvvl.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
       "16": "icons/icon16.png"
     }
+  },
+  "icons": {
+    "16": "icons/icon16.png"
   }
+}

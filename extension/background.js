@@ -1,125 +1,120 @@
-// background.js
 const DASHBOARD_URL = 'http://localhost:3000';
-const API_ENDPOINT = 'http://localhost:5000/api/save';
+const API_ENDPOINT = 'http://localhost:5000/api';
+let userToken = null;
 
-// Create context menu items with two options each
-chrome.runtime.onInstalled.addListener(() => {
-  const contexts = [
-    { id: 'Text', context: 'selection', content: 'selectionText' },
-    { id: 'Image', context: 'image', content: 'srcUrl' },
-    { id: 'Video', context: 'video', content: 'srcUrl' },
-    { id: 'Link', context: 'link', content: 'linkUrl' },
-    { id: 'Page', context: 'page', content: 'url' }
-  ];
+// Check authentication status on startup
+chrome.runtime.onStartup.addListener(checkAuth);
+chrome.runtime.onInstalled.addListener(checkAuth);
 
-  contexts.forEach(({ id, context }) => {
-    // Create parent menu item
-    chrome.contextMenus.create({
-      id: `save${id}Parent`,
-      title: `Send ${id} into Orbit`,
-      contexts: [context]
-    });
-
-    // Create child menu items
-    chrome.contextMenus.create({
-      id: `quickSave${id}`,
-      parentId: `save${id}Parent`,
-      title: 'Quick Save',
-      contexts: [context]
-    });
-
-    chrome.contextMenus.create({
-      id: `taggedSave${id}`,
-      parentId: `save${id}Parent`,
-      title: 'Save with Tags',
-      contexts: [context]
-    });
-  });
-});
-
-// Handle context menu clicks
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  const isQuickSave = info.menuItemId.startsWith('quickSave');
-  const type = info.menuItemId.replace(isQuickSave ? 'quickSave' : 'taggedSave', '').toLowerCase();
-  
-  let data = {
-    type,
-    content: '',
-    url: tab.url,
-    title: tab.title,
-    timestamp: new Date().toISOString(),
-    tags: []
-  };
-
-  // Set content based on type
-  switch (type) {
-    case 'text':
-      data.content = info.selectionText;
-      break;
-    case 'image':
-    case 'video':
-      data.content = info.srcUrl;
-      break;
-    case 'link':
-      data.content = info.linkUrl;
-      break;
-    case 'page':
-      data.content = tab.url;
-      // Handle page content separately
-      chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        function: () => document.documentElement.outerHTML
-      }, (result) => {
-        data.content = result[0].result;
-        handleSave(data, isQuickSave, tab.id);
-      });
-      return;
+async function checkAuth() {
+  try {
+    const token = await chrome.storage.local.get('authToken');
+    if (!token.authToken) {
+      // Redirect to login if no token found
+      await initiateLogin();
+    } else {
+      userToken = token.authToken;
+      // Verify token with backend
+      const isValid = await verifyToken(userToken);
+      if (!isValid) {
+        await initiateLogin();
+      }
+    }
+  } catch (error) {
+    console.error('Auth check failed:', error);
+    await initiateLogin();
   }
-
-  handleSave(data, isQuickSave, tab.id);
-});
-
-// Handle the save operation
-function handleSave(data, isQuickSave, tabId) {
-  if (isQuickSave) {
-    sendToBackend(data);
-  } else {
-    // Open popup for tag input
-    chrome.windows.create({
-      url: 'tagPopup.html',
-      type: 'popup',
-      width: 400,
-      height: 300
-    }, (window) => {
-      // Store the data temporarily
-      chrome.storage.local.set({
-        pendingSave: {
-          data,
-          sourceTabId: tabId
-        }
-      });
+}
+async function initiateLogin() {
+  try {
+    console.log("Starting login process...");
+    
+    // Use getAuthToken instead of launchWebAuthFlow
+    const auth = await chrome.identity.getAuthToken({ 
+      interactive: true,
+      scopes: [
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile'
+      ]
     });
+    
+    console.log("Got auth token:", auth ? "Yes" : "No");
+    
+    if (auth && auth.token) {
+      console.log("Sending token to backend...");
+      // Exchange Google token for your backend token
+      const response = await fetch(`${API_ENDPOINT}/auth/google`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ google_token: auth.token })
+      });
+      
+      console.log("Backend response status:", response.status);
+      const responseText = await response.text();
+      console.log("Backend response:", responseText);
+      
+      if (!response.ok) {
+        console.error("Backend auth failed:", responseText);
+        throw new Error('Backend auth failed');
+      }
+      
+      const data = JSON.parse(responseText);
+      userToken = data.token;
+      await chrome.storage.local.set({ authToken: userToken });
+      console.log("Successfully stored auth token");
+    } else {
+      throw new Error('Failed to get auth token');
+    }
+  } catch (error) {
+    console.error('Login failed:', error);
+    console.error('Error stack:', error.stack);
+    throw error;
   }
 }
 
-// Send data to backend
+async function verifyToken(token) {
+  try {
+    const response = await fetch(`${API_ENDPOINT}/auth/verify`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Modify sendToBackend to include auth token
 function sendToBackend(data) {
-  fetch(API_ENDPOINT, {
+  if (!userToken) {
+    initiateLogin().then(() => sendToBackend(data));
+    return;
+  }
+
+  fetch(`${API_ENDPOINT}/save`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`
     },
     body: JSON.stringify(data)
   })
-  .then(response => response.json())
+  .then(response => {
+    if (response.status === 401) {
+      // Token expired or invalid
+      return initiateLogin().then(() => sendToBackend(data));
+    }
+    return response.json();
+  })
   .then(result => {
-    // Show success notification
     chrome.action.setBadgeText({ text: '✓' });
     setTimeout(() => chrome.action.setBadgeText({ text: '' }), 2000);
   })
   .catch(error => {
     console.error('Error:', error);
-    // Show error notification
     chrome.action.setBadgeText({ text: '❌' });
     setTimeout(() => chrome.action.setBadgeText({ text: '' }), 2000);
   });
