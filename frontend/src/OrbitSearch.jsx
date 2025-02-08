@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown } from 'lucide-react';
 import './OrbitSearch.css';
+import TextDisplay from './TextDisplay';
 
 const OrbitLogo = ({ color = '#FFFFFF', className = '' }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" className={className}>
@@ -148,6 +149,11 @@ const OrbitSearch = () => {
             />
             <Search className="search-icon" size={24} />
           </div>
+        </div>
+
+        {/* Add TextDisplay component here */}
+        <div className={`results-container ${isLoaded ? 'loaded' : ''}`}>
+          <TextDisplay />
         </div>
       </main>
     </div>

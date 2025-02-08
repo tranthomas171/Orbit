@@ -21,14 +21,14 @@ image_handler = ImageHandler(client)
 audio_handler = AudioHandler(client)
 
 app = Flask(__name__)
-CORS(app, resources={
+CORS(app, supports_credentials=True,resources={
     r"/api/*": {
         "origins": ["chrome-extension://*", "http://localhost:5173"],
         "methods": ["POST", "GET", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"]
     }
 })
-app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_SECURE"] = False
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.secret_key = os.getenv("SESSION_SECRET")
 
