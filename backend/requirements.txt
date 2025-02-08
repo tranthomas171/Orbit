@@ -1,0 +1,14 @@
+# requirements.txt
+fastapi==0.109.0
+uvicorn==0.27.0
+python-multipart==0.0.6
+chromadb==0.4.22
+torch==2.1.0
+transformers==4.36.0
+open_clip_torch==2.23.0
+pytube==15.0.0
+Pillow==10.2.0
+python-jose==3.3.0
+python-dotenv==1.0.0
+beautifulsoup4==4.12.2
+requests==2.31.0
