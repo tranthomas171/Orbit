@@ -89,9 +89,10 @@ def save_content():
             text_handler.add_text(
                 user_id=request.user.id,  # Using authenticated user's ID
                 content=request_content.get('data'),
-                metadata={
+                meta={
                     'tags': request_tags,
-                    'email': request.user.email  # Optional: include email in metadata
+                    'email': request.user.email,  # Optional: include email in metadata
+                    'type': 'text'
                 }
             )
         elif request_content.get('type') == 'image':
@@ -101,7 +102,8 @@ def save_content():
                 image_path=request_content.get('path'),
                 metadata={
                     'tags': request_tags,
-                    'email': request.user.email
+                    'email': request.user.email,
+                    'type': 'image'
                 }
             )
         elif request_content.get('type') == 'audio':
@@ -111,7 +113,8 @@ def save_content():
                 audio_path=request_content.get('path'),
                 metadata={
                     'tags': request_tags,
-                    'email': request.user.email
+                    'email': request.user.email,
+                    'type': 'audio'
                 }
             )
         
@@ -127,11 +130,14 @@ def save_content():
             'message': str(e)
         }), 500
 @app.route('/api/search', methods=['GET'])
-@require_auth # Uncomment this line to require authentication
+#@require_auth
 def search_content():
     try:
         query = request.args.get('query')
         types = request.args.get('types').split(',') if request.args.get('types') else None
+        # If no user is authenticated, testing user is created
+        if not hasattr(request, 'user') or not request.user:
+            request.user = User.get_or_create("ethan.wanq@gmail.com")[0]
 
         if 'text' in types:
             # Search text content
