@@ -197,7 +197,7 @@ class CLAPEmbedder(EmbeddingFunction):
                 raise ValueError(f"Unsupported input type: {type(item)}")
         return embeddings
 
-class AudioLibrary:
+class AudioHandler:
     """Manages audio file storage and retrieval using ChromaDB."""
     
     def __init__(
