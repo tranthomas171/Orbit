@@ -186,26 +186,53 @@ def search_content():
         if not query:
             return jsonify({'error': 'No query provided'}), 400
 
+        # If the 'types' query parameter is provided, split it into a list.
+        # Otherwise, default to searching all types.
         types_param = request.args.get('types')
-        types = types_param.split(',') if types_param else None
+        if types_param:
+            types = [t.strip().lower() for t in types_param.split(',')]
+        else:
+            types = ['text', 'image', 'audio']
 
-        # For example, search only in text data if specified.
-        if types and 'text' in types:
+        results = {}
+
+        # Search text items if requested
+        if 'text' in types:
             text_results = text_handler.search_texts(
                 user_id=request.user.id,
                 query=query
             )
-            print(f"Text results: {text_results}")
+            results['text'] = text_results
+
+        # Search image items if requested
+        if 'image' in types:
+            image_results = image_handler.retrieve_images(
+                user_id=request.user.id,
+                query=query
+            )
+            results['image'] = image_results
+
+        # Search audio items if requested
+        if 'audio' in types:
+            # Assuming your AudioHandler implements a similar interface:
+            audio_results = audio_handler.retrieve_audios(
+                user_id=request.user.id,
+                query=query
+            )
+            results['audio'] = audio_results
 
         print(f"Searching for: {query}")
         print(f"Types: {types}")
-        return jsonify({"results": "PLACEHOLDER"})  # Replace with actual search results.
+
+        return jsonify({"results": results})
+
     except Exception as e:
         print(f"Error searching content: {e}")
         return jsonify({
             'status': 'error',
             'message': str(e)
         }), 500
+
 
 @app.route('/')
 def home():
