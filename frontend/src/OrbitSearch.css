@@ -153,7 +153,7 @@
   max-width: 90%;
   margin: 0 auto;
   opacity: 0;
-  transform: translateY(30px);
+  transform: translateY(-530px);
   transition: all 1s ease-out;
   transition-delay: 400ms;
 }
@@ -165,6 +165,7 @@
 
 .search-input-container {
   position: relative;
+  top: -350px;
 }
 
 .search-input {
