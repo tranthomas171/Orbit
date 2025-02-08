@@ -6,6 +6,7 @@ from sentence_transformers import SentenceTransformer
 from data_handlers import *
 from chromadb import PersistentClient
 import torch
+import numpy as np
 
 class MPNetEmbedding:
     def __init__(self):
@@ -23,10 +24,24 @@ class MPNetEmbedding:
         """
         if torch.cuda.is_available():
             self.embedding_model.to('cuda')
-            return self.embedding_model.encode(input, convert_to_numpy=True).tolist()
+            embedding = self.embedding_model.encode(input, convert_to_numpy=True).tolist()
         else:
-            return self.embedding_model.encode(input, convert_to_numpy=True).tolist()
+            embedding = self.embedding_model.encode(input, convert_to_numpy=True).tolist()
+        return self._normalize_embedding(embedding)
+    def _normalize_embedding(embedding):
+        """
+        Normalizes a single embedding vector to unit length.
 
+        Args:
+            embedding (np.ndarray): The embedding vector.
+
+        Returns:
+            np.ndarray: The normalized embedding vector.
+        """
+        norm = np.linalg.norm(embedding)
+        if norm == 0:
+            return embedding  # Avoid division by zero
+        return embedding / norm 
 class TextHandler:
     client: PersistentClient
 
@@ -80,15 +95,16 @@ class TextHandler:
             name=f'text_collection_{user_id}',
             embedding_function=self.embedding_model
         )
-    def add_text(self, user_id, content, source_url=None, title=None, metadata=None):
+    def add_text(self, user_id, content, source_url=None, title=None, meta=None):
         """
         Add text content for a specific user to the ChromaDB collection.
 
         Args:
             user_id (str): Unique identifier for the user.
-            text_content (str): The text content to store.
+            content (str): The text content to store.
             source_url (str, optional): URL where the text was sourced from.
             title (str, optional): Title for the text content.
+            meta (dict, optional): Additional metadata to include.
         """
         print(content)
         try:
@@ -107,9 +123,14 @@ class TextHandler:
                 'file_path': file_path
             }
 
-            if metadata:
-                metadata.update(metadata)
+            # Merge additional metadata
+            if meta:
+                metadata.update(meta)
 
+            # Sanitize metadata to replace None values
+            metadata = self._sanitize_metadata(metadata)
+
+            print(metadata)
             if not os.path.exists(file_path):
                 with open(file_path, 'w', encoding='utf-8') as f:
                     json.dump({
@@ -122,7 +143,7 @@ class TextHandler:
             user_collection.add(
                 ids=[unique_id],
                 documents=[content],
-                metadatas=[metadata]
+                metadatas=metadata
             )
 
             print(f"Text {unique_id} added successfully for user {user_id}.")
@@ -130,6 +151,33 @@ class TextHandler:
         except Exception as e:
             print(f"Failed to add text for user {user_id}: {e}")
             return None
+
+    def _sanitize_metadata(self, metadata):
+        """
+        Sanitize metadata by:
+        - Replacing None values with an empty string.
+        - Serializing unsupported types (e.g., lists, dicts, objects) into JSON strings.
+
+        Args:
+            metadata (dict): Metadata dictionary to sanitize.
+
+        Returns:
+            dict: Sanitized metadata dictionary.
+        """
+        sanitized_metadata = {}
+        for key, value in metadata.items():
+            if value is None:
+                sanitized_metadata[key] = ""  # Replace None with an empty string
+            elif isinstance(value, (str, int, float, bool)):
+                sanitized_metadata[key] = value  # Keep valid types as-is
+            else:
+                try:
+                    # Serialize unsupported types to JSON strings
+                    sanitized_metadata[key] = json.dumps(value, ensure_ascii=False)
+                except Exception as e:
+                    print(f"Failed to serialize metadata key '{key}' with value '{value}': {e}")
+                    sanitized_metadata[key] = ""  # Fallback to empty string if serialization fails
+        return sanitized_metadata
 
     def search_texts(self, user_id, query, n_results=5):
         """
