@@ -175,11 +175,6 @@ function App() {
           <span className="logo-text">ORBIT</span>
         </div>
         
-        <div className={`nav-buttons ${isLoaded ? 'loaded' : 'fade-in'}`}
-             style={{ transitionDelay: '600ms' }}>
-          <button className="sign-in-button" onClick={() => setIsLoggedIn(true)}>Sign In</button>
-          <button className="primary-button">Join Now</button>
-        </div>
       </header>
 
       <main className="main-content">
