@@ -15,11 +15,7 @@ function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   
   const colors = {
-    background: '#0B0733',
     accent: '#9D8CFF',
-    buttonPrimary: '#4936B6',
-    buttonSecondary: '#2A1B8F',
-    white: '#FFFFFF',
     starColor: '#B4A5FF',
     starGlow: '#8A7DFF'
   };
@@ -39,7 +35,7 @@ function App() {
     };
 
     setStars(generateStars());
-    setTimeout(() => setIsLoaded(true), 500);
+    setTimeout(() => setIsLoaded(true), 800);
 
     const moveStars = () => {
       setStars(prevStars => 
@@ -88,8 +84,8 @@ function App() {
     return (
       <div
         key={index}
+        className="star"
         style={{
-          position: 'absolute',
           left: `${star.x}%`,
           top: `${star.y}%`,
           width: `${width}px`,
@@ -98,30 +94,16 @@ function App() {
           background: `linear-gradient(90deg, ${star.color}, transparent)`,
           boxShadow: `0 0 ${blur}px ${star.color}`,
           transform: `translateZ(${star.depth * 400}px)`,
-          transition: 'opacity 1s ease-in-out',
-          borderRadius: '50%'
         }}
       />
     );
   };
 
   return (
-    <div 
-      style={{ 
-        position: 'relative',
-        minHeight: '100vh',
-        width: '100%',
-        overflow: 'hidden',
-        perspective: '1000px',
-        background: `linear-gradient(135deg, ${colors.background}, #150D40)`
-      }}
-      onMouseMove={handleMouseMove}
-    >
+    <div className="space-container" onMouseMove={handleMouseMove}>
       <div 
+        className="stars-container"
         style={{ 
-          position: 'absolute',
-          inset: 0,
-          transformStyle: 'preserve-3d',
           transform: `rotateY(${(mousePosition.x - 50) * 0.02}deg) 
                      rotateX(${(mousePosition.y - 50) * -0.02}deg)`
         }}
@@ -129,61 +111,36 @@ function App() {
         {stars.map((star, index) => renderStar(star, index))}
       </div>
 
-      <div style={{ position: 'relative', zIndex: 10, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <header style={{ padding: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <OrbitLogo style={{ height: '2rem', width: '2rem' }} color={colors.accent} />
-            <span style={{ fontSize: '1.25rem', fontWeight: 300, letterSpacing: '0.05em', color: colors.white }}>ORBIT</span>
+      <div className="content-wrapper">
+        <header className="header">
+          <div className={`logo-container ${isLoaded ? 'loaded' : 'fade-in'}`}
+               style={{ transitionDelay: '400ms' }}>
+            <OrbitLogo color={colors.accent} />
+            <span className="logo-text">ORBIT</span>
           </div>
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
-            <button style={{ padding: '0.5rem 1rem', color: 'rgba(255,255,255,0.8)', transition: 'all 0.3s' }}>
-              Sign In
-            </button>
-            <button 
-              style={{ 
-                borderRadius: '9999px', 
-                padding: '0.5rem 1.25rem', 
-                color: colors.white,
-                backgroundColor: colors.buttonPrimary,
-                transition: 'all 0.3s'
-              }}
-            >
-              Join Now
-            </button>
+          
+          <div className={`nav-buttons ${isLoaded ? 'loaded' : 'fade-in'}`}
+               style={{ transitionDelay: '600ms' }}>
+            <button className="sign-in-button">Sign In</button>
+            <button className="primary-button">Join Now</button>
           </div>
         </header>
 
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 1rem' }}>
-          <h1 style={{ fontSize: '4.5rem', fontWeight: 300, letterSpacing: '0.05em', color: colors.white, marginBottom: '2rem' }}>
+        <main className="main-content">
+          <h1 className={`title ${isLoaded ? 'loaded' : 'fade-in'}`}
+              style={{ transitionDelay: '800ms' }}>
             Welcome to Orbit
           </h1>
-          <p style={{ marginBottom: '4rem', maxWidth: '36rem', fontSize: '1.25rem', lineHeight: 1.7, fontWeight: 300, letterSpacing: '0.025em', color: 'rgba(255,255,255,0.8)' }}>
+          
+          <p className={`description ${isLoaded ? 'loaded' : 'fade-in'}`}
+             style={{ transitionDelay: '1000ms' }}>
             Discover a new dimension of content through image, video, audio, and text.
             Find unexpected connections as you explore new universes.
           </p>
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
-            <button 
-              style={{ 
-                borderRadius: '9999px',
-                padding: '1rem 2rem',
-                color: colors.white,
-                backgroundColor: colors.buttonPrimary,
-                transition: 'all 0.3s'
-              }}
-            >
-              Get Started
-            </button>
-            <button 
-              style={{ 
-                borderRadius: '9999px',
-                padding: '1rem 2rem',
-                color: colors.white,
-                backgroundColor: colors.buttonSecondary,
-                transition: 'all 0.3s'
-              }}
-            >
-              Learn More
-            </button>
+          
+          <div className={isLoaded ? 'loaded' : 'fade-in'}
+               style={{ transitionDelay: '1200ms' }}>
+            <button className="cta-button">Get Started</button>
           </div>
         </main>
       </div>
