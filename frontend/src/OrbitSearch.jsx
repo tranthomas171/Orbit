@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import './OrbitSearch.css';
 import TextDisplay from './TextDisplay';
+import SearchBar from './SearchBar';
 
 const OrbitLogo = ({ color = '#FFFFFF', className = '' }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" className={className}>
@@ -18,6 +19,7 @@ const OrbitSearch = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('Everything');
   const [showDashboard, setShowDashboard] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
 
   const filters = ['Everything', 'Images', 'Text', 'Audio'];
 
@@ -94,6 +96,10 @@ const OrbitSearch = () => {
     />
   );
 
+  const handleSearchResults = (results) => {
+    setSearchResults(results);
+  };
+
   const renderDashboardContent = () => (
     <div className="content-container">
       <header className="header">
@@ -141,19 +147,17 @@ const OrbitSearch = () => {
   
       <main className="main-content">
         <div className={`search-container ${isLoaded ? 'loaded' : ''}`}>
-          <div className="search-input-container">
-            <input
-              type="text"
-              placeholder="Navigate your orbit..."
-              className="search-input"
-            />
-            <Search className="search-icon" size={24} />
-          </div>
+          <SearchBar
+            selectedFilter={selectedFilter}
+            onSearch={handleSearchResults}
+          />
         </div>
 
-        {/* Insert the TextDisplay component */}
         <div className={`results-container ${isLoaded ? 'loaded' : ''}`}>
-          <TextDisplay />
+          <TextDisplay 
+            initialItems={searchResults}
+            isSearchMode={searchResults.length > 0}
+          />
         </div>
       </main>
     </div>
@@ -184,16 +188,7 @@ const OrbitSearch = () => {
         <div className={`cta-container ${isLoaded ? 'loaded' : ''}`}>
           <button 
             className="cta-button"
-            onClick={() => {
-              const extensionId = 'mcheadbaojiadbbbakcabnoglhihefhg';
-              const extensionURL = `chrome-extension://${extensionId}/index.html`;
-
-              chrome.tabs.create({ url: extensionURL }, (tab) => {
-                if (chrome.runtime.lastError) {
-                  console.error("Error opening extension:", chrome.runtime.lastError);
-                }
-              });
-            }}
+            onClick={() => setShowDashboard(true)}
           >
             Get Started
           </button>

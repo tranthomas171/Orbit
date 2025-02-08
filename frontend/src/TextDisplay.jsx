@@ -92,12 +92,15 @@ const generatePosition = (index, totalItems) => {
   };
 };
 
-const TextDisplay = () => {
+const TextDisplay = ({ initialItems = [], isSearchMode = false }) => {
   const { items, page, totalCount, loading, error, fetchPage } = useTextDisplayData(1, 5);
   const [expandedItem, setExpandedItem] = useState(null);
 
-  const positionedItems = items.map((item, idx) => {
-    const pos = generatePosition(idx, items.length);
+  // Use search results if in search mode, otherwise use regular items
+  const displayItems = isSearchMode ? initialItems : items;
+
+  const positionedItems = displayItems.map((item, idx) => {
+    const pos = generatePosition(idx, displayItems.length);
     return { ...item, position: pos };
   });
 
@@ -152,6 +155,7 @@ const TextDisplay = () => {
     fetchPage(1);
   }, [fetchPage]);
 
+  
   return (
     <div style={styles.container}>
       {positionedItems.map((item) => (
@@ -167,8 +171,8 @@ const TextDisplay = () => {
         />
       ))}
 
-      {loading && <div style={styles.loading}>Loading more items...</div>}
-      {!loading && items.length < totalCount && (
+      {!isSearchMode && loading && <div style={styles.loading}>Loading more items...</div>}
+      {!isSearchMode && !loading && items.length < totalCount && (
         <button 
           style={styles.loadMoreButton}
           onClick={() => fetchPage(page + 1)}
