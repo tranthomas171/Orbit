@@ -8,3 +8,5 @@
 *.pyc
 *.db
 node_modules
+*/data/*
+*/OrbitDB/*
