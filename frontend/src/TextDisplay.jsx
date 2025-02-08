@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 const styles = {
   container: {
@@ -6,7 +6,7 @@ const styles = {
     width: '100vw',
     height: '100vh',
     padding: '20px',
-    overflow: 'hidden',
+    overflow: 'hidden', // Changed back to 'hidden'
   },
   card: {
     position: 'absolute',
@@ -77,7 +77,6 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     zIndex: 999,
   }
 };
@@ -110,31 +109,36 @@ const TextDisplay = () => {
     };
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('http://localhost:3030/api/random?n=10', {
-          method: "GET",
-          credentials: "include"
-        });
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
-        const totalItems = data.items.length;
-        setItems(data.items.map((item, index) => ({
-          ...item,
-          position: generatePosition(index, totalItems)
-        })));
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchData = useCallback(async () => {
+    try {
+      const response = await fetch('http://localhost:3030/api/populate?page_size=10&page=2', {
+        method: "GET",
+        credentials: "include"
+      });
 
-    fetchData();
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await response.json();
+      const totalItems = data.items.length;
+      
+      const newItems = data.items.map((item, index) => ({
+        ...item,
+        position: generatePosition(index, totalItems)
+      }));
+
+      setItems(newItems);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const truncateText = (text, maxLength = 100) => {
     if (!text) return '';
@@ -168,10 +172,6 @@ const TextDisplay = () => {
     );
   };
 
-  if (loading) {
-    return <div style={styles.loading}>Loading...</div>;
-  }
-
   if (error) {
     return <div style={styles.error}>Error: {error}</div>;
   }
@@ -194,7 +194,6 @@ const TextDisplay = () => {
         >
           {renderContent(item)}
           <div style={styles.metadata}>
-            {item.metadata.title && <div>Title: {item.metadata.title}</div>}
             <div>Time: {new Date(item.metadata.timestamp).toLocaleString()}</div>
             {item.metadata.source_url && (
               <div>Source: {item.metadata.source_url}</div>
@@ -202,6 +201,8 @@ const TextDisplay = () => {
           </div>
         </div>
       ))}
+
+      {loading && <div style={styles.loading}>Loading more items...</div>}
 
       {expandedItem && (
         <>
