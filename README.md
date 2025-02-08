@@ -1,14 +1,12 @@
 # Orbit: Simplify Your Digital World
 ## About Us
 ### Orbit is a tri-modal data storage and retrieval system designed for seamless organization and retrieval of your digital content. With Orbit, you can save text, images, URLs, videos, and entire webpages effortlessly, and retrieve them using powerful semantic and keyword-based searches.
-====
 ## Technical Details
 - **Frontend**: React-based web dashboard for managing and searching saved items.
 - **Backend**: Python-powered API using a modified version of ChromaDB for vector storage.
 - **Embeddings**: CLIP for text and images, CLAP for audio.
 - **Chrome Extension**: Enables quick saving of digital content.
 - **Deployment**: TBD
-====
 ## Intended Use Cases
 - **Students**: Save and organize research materials and class notes.
 - **People with Memory Challenges**: Keep track of important links, images, and notes.
@@ -43,4 +41,3 @@
 - [ ] Add advanced filtering options for search.
 - [ ] Implement data visualization features in the dashboard.
 
-====
