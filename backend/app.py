@@ -267,7 +267,7 @@ def search_content():
 
         print(f"Searching for: {query}")
         print(f"Types: {types}")
-
+        print(results)
         return jsonify({"results": results})
 
     except Exception as e:

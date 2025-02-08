@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import useTextDisplayData from './useTextDisplayData'; // Your custom hook
-import DraggableCard from './DraggableCard'; // Import the draggable card
+import useTextDisplayData from './useTextDisplayData';
+import DraggableCard from './DraggableCard';
+import { X } from 'lucide-react';
 
 const styles = {
   container: {
@@ -49,29 +50,67 @@ const styles = {
     cursor: 'pointer',
     fontSize: '12px',
     padding: '4px 0',
+    marginLeft: '8px',
   },
-  expandedView: {
+  modal: {
     position: 'fixed',
     top: '50%',
     left: '50%',
-    marginTop: '-200px', // adjust as needed
-    marginLeft: '-150px', // adjust as needed
-    backgroundColor: 'rgba(255, 255, 255, 0)',
-    padding: '20px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-    maxWidth: '90%',
-    maxHeight: '90vh',
-    overflow: 'auto',
-    zIndex: 1000,
+    transform: 'translate(-50%, -50%)',
+    width: '90%',
+    maxWidth: '600px',
+    maxHeight: '80vh',
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2)',
+    zIndex: 2000,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
   },
-  overlay: {
+  modalHeader: {
+    padding: '16px 24px',
+    borderBottom: '1px solid #eee',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: '18px',
+    fontWeight: 500,
+    color: '#111',
+  },
+  modalContent: {
+    padding: '24px',
+    overflowY: 'auto',
+    flex: 1,
+    fontSize: '16px',
+    lineHeight: '1.6',
+    color: '#333',
+  },
+  modalOverlay: {
     position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 999,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1999,
+  },
+  closeButton: {
+    background: 'none',
+    border: 'none',
+    padding: '4px',
+    cursor: 'pointer',
+    color: '#666',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '4px',
+    transition: 'background-color 0.2s',
+    ':hover': {
+      backgroundColor: '#f3f4f6',
+    },
   },
 };
 
@@ -94,9 +133,9 @@ const generatePosition = (index, totalItems) => {
 
 const TextDisplay = ({ initialItems = [], isSearchMode = false }) => {
   const { items, page, totalCount, loading, error, fetchPage } = useTextDisplayData(1, 5);
-  const [expandedItem, setExpandedItem] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
-  // Use search results if in search mode, otherwise use regular items
   const displayItems = isSearchMode ? initialItems : items;
 
   const positionedItems = displayItems.map((item, idx) => {
@@ -109,6 +148,17 @@ const TextDisplay = ({ initialItems = [], isSearchMode = false }) => {
     return text.length <= maxLength ? text : text.slice(0, maxLength) + '...';
   };
 
+  const handleShowMore = (e, item) => {
+    e.stopPropagation();
+    setSelectedItem(item);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedItem(null);
+  };
+
   const renderContent = (item) => {
     if (item.type === 'image') {
       return (
@@ -119,31 +169,12 @@ const TextDisplay = ({ initialItems = [], isSearchMode = false }) => {
         />
       );
     }
-    if (item.type === 'youtube_video') {
-      return (
-        <div style={styles.text}>
-          <strong>YouTube:</strong> {truncateText(item.document, 150)}
-          <button 
-            style={styles.showMoreButton}
-            onClick={(e) => {
-              e.stopPropagation();
-              setExpandedItem(item);
-            }}
-          >
-            Show More
-          </button>
-        </div>
-      );
-    }
     return (
       <div style={styles.text}>
         {truncateText(item.document)}
         <button 
           style={styles.showMoreButton}
-          onClick={(e) => {
-            e.stopPropagation();
-            setExpandedItem(item);
-          }}
+          onClick={(e) => handleShowMore(e, item)}
         >
           Show More
         </button>
@@ -155,7 +186,6 @@ const TextDisplay = ({ initialItems = [], isSearchMode = false }) => {
     fetchPage(1);
   }, [fetchPage]);
 
-  
   return (
     <div style={styles.container}>
       {positionedItems.map((item) => (
@@ -165,7 +195,6 @@ const TextDisplay = ({ initialItems = [], isSearchMode = false }) => {
           initialPosition={item.position}
           renderContent={renderContent}
           metadata={item.metadata}
-          onClick={() => setExpandedItem(item)}
           onMouseEnter={() => {}}
           onMouseLeave={() => {}}
         />
@@ -181,31 +210,26 @@ const TextDisplay = ({ initialItems = [], isSearchMode = false }) => {
         </button>
       )}
 
-      {expandedItem && (
+      {showModal && selectedItem && (
         <>
-          <div style={styles.overlay} onClick={() => setExpandedItem(null)} />
-          <div style={styles.expandedView}>
-            {expandedItem.type === 'image' ? (
-              <img 
-                src={expandedItem.data} 
-                alt={expandedItem.metadata.title || 'Image'} 
-                style={styles.image}
-              />
-            ) : (
-              <div style={styles.text}>{expandedItem.document}</div>
-            )}
-            <div style={styles.metadata}>
-              <div>Time: {new Date(expandedItem.metadata.timestamp).toLocaleString()}</div>
-              {expandedItem.metadata.source_url && (
-                <div>Source: {expandedItem.metadata.source_url}</div>
+          <div style={styles.modalOverlay} onClick={closeModal} />
+          <div style={styles.modal}>
+            <div style={styles.modalHeader}>
+              <div style={styles.modalTitle}>
+                {selectedItem.metadata?.title || 'Content Details'}
+              </div>
+              <button style={styles.closeButton} onClick={closeModal}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={styles.modalContent}>
+              {selectedItem.document}
+              {selectedItem.metadata?.timestamp && (
+                <div style={{ marginTop: '16px', fontSize: '14px', color: '#666' }}>
+                  {new Date(selectedItem.metadata.timestamp).toLocaleString()}
+                </div>
               )}
             </div>
-            <button 
-              style={styles.loadMoreButton}
-              onClick={() => setExpandedItem(null)}
-            >
-              Close
-            </button>
           </div>
         </>
       )}
