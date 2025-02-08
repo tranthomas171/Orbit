@@ -7,6 +7,7 @@ import chromadb
 from users.user_management import init_db, User, db
 from dotenv import load_dotenv
 import os
+import random
 
 load_dotenv()
 
@@ -206,10 +207,105 @@ def search_content():
             'message': str(e)
         }), 500
 
-
 @app.route('/')
 def home():
     return jsonify({'status': 'Server is running'})
+
+@app.route('/api/random', methods=['GET'])
+@require_auth
+def random_items():
+    """
+    Return a JSON response with N random items sampled from the user's stored items
+    across texts, images, and audio. The number N can be provided via the 'n' query
+    parameter (defaulting to 5 if not specified).
+    """
+    try:
+        # Get the desired sample count from query parameters; default to 5 if not provided.
+        n_param = request.args.get('n', '5')
+        try:
+            n = int(n_param)
+        except ValueError:
+            n = 5
+
+        user_id = str(request.user.id)
+        all_items = []
+
+        # --- TEXT ITEMS ---
+        text_collection = text_handler._get_user_collection(user_id)
+        # Note: "ids" is returned by default so we do not include it explicitly.
+        text_data = text_collection.get(include=["metadatas", "documents"])
+        text_ids = text_data.get("ids", [])
+        if text_ids:
+            for idx, item_id in enumerate(text_ids):
+                item = {
+                    "id": item_id,
+                    "document": text_data.get("documents", [])[idx],
+                    "metadata": text_data.get("metadatas", [])[idx],
+                    "type": "text"
+                }
+                all_items.append(item)
+
+        # --- IMAGE ITEMS ---
+        image_collection = image_handler._get_user_collection(user_id)
+        image_data = image_collection.get(include=["metadatas", "documents"])
+        image_ids = image_data.get("ids", [])
+        if image_ids:
+            for idx, item_id in enumerate(image_ids):
+                # For images, we may not want to return the raw binary document.
+                # Instead, we can return the stored URI from the metadata.
+                metadata = image_data.get("metadatas", [])[idx]
+                item = {
+                    "id": item_id,
+                    "document": None,
+                    "metadata": metadata,
+                    "type": "image"
+                }
+                all_items.append(item)
+
+        # --- AUDIO ITEMS ---
+        try:
+            audio_collection = audio_handler._get_user_collection(user_id)
+            audio_data = audio_collection.get(include=["metadatas", "documents"])
+            audio_ids = audio_data.get("ids", [])
+            if audio_ids:
+                for idx, item_id in enumerate(audio_ids):
+                    # For audio items, return metadata (which should include a file URI or similar).
+                    metadata = audio_data.get("metadatas", [])[idx]
+                    item = {
+                        "id": item_id,
+                        "document": None,
+                        "metadata": metadata,
+                        "type": "audio"
+                    }
+                    all_items.append(item)
+        except Exception as e:
+            # If audio_handler isn't properly set up or returns no items, log and skip it.
+            print(f"Audio retrieval error: {e}")
+
+        # --- SAMPLE RANDOM ITEMS ---
+        if not all_items:
+            return jsonify({
+                "status": "success",
+                "count": 0,
+                "items": [],
+                "message": "No stored items found for this user."
+            })
+
+        # If the total number of items is less than n, return all items.
+        sampled_items = random.sample(all_items, min(n, len(all_items)))
+
+        return jsonify({
+            "status": "success",
+            "count": len(sampled_items),
+            "items": sampled_items
+        })
+
+    except Exception as e:
+        print(f"Error retrieving random items: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 if __name__ == '__main__':
     print("Server starting on http://localhost:3030")
