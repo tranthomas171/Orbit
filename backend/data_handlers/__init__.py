@@ -1,4 +1,3 @@
-import ImageHandler
-import AudioHandler
-import VideoHandler
-import TextHandler
+from .AudioHandler import AudioHandler
+from .TextHandler import TextHandler
+from .ImageHandler import ImageHandler
