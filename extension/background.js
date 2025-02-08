@@ -58,20 +58,30 @@ async function forceNewAuth() {
     return null;
   }
 }
-// Create context menu items
 chrome.runtime.onInstalled.addListener(() => {
+  // Create parent menu item
   chrome.contextMenus.create({
-    id: 'quickSave',
-    title: 'Quick Save',
-    contexts: ['selection', 'image', 'video', 'audio', 'page']
+    id: 'sendIntoOrbit',
+    title: 'Send into Orbit',
+    contexts: ['selection', 'image', 'audio', 'page']
+  });
+
+  // Create child menu items
+  chrome.contextMenus.create({
+    id: 'automatically',
+    parentId: 'sendIntoOrbit',
+    title: 'Automatically',
+    contexts: ['selection', 'image', 'audio', 'page']
   });
 
   chrome.contextMenus.create({
-    id: 'manualSave',
-    title: 'Manual Save',
-    contexts: ['selection', 'image', 'video', 'audio', 'page']
+    id: 'manually',
+    parentId: 'sendIntoOrbit',
+    title: 'Manually',
+    contexts: ['selection', 'image', 'audio', 'page']
   });
 });
+
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -86,7 +96,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const content = await getSelectedContent(info, tab);
     if (!content) return;
 
-    if (info.menuItemId === 'manualSave') {
+    if (info.menuItemId === 'manually') {
       // Open popup for manual tagging
       chrome.windows.create({
         url: 'tagPopup.html',
@@ -125,9 +135,6 @@ async function getSelectedContent(info, tab) {
   } else if (info.srcUrl) {
     if (info.mediaType === 'image') {
       content.type = 'image';
-      content.data = info.srcUrl;
-    } else if (info.mediaType === 'video') {
-      content.type = 'video';
       content.data = info.srcUrl;
     } else if (info.mediaType === 'audio') {
       content.type = 'audio';

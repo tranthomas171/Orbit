@@ -2,7 +2,18 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from functools import wraps
 import requests
-import os
+from data_handlers import TextHandler, ImageHandler, AudioHandler
+import chromadb
+from users.user_management import init_db, User, db
+
+# Initialize ChromaDB client
+chroma_path = "OrbitDB"
+client = chromadb.PersistentClient(path=chroma_path)
+
+# Initialize handlers
+text_handler = TextHandler(client)
+image_handler = ImageHandler(client)
+audio_handler = AudioHandler(client)
 
 app = Flask(__name__)
 CORS(app, resources={
@@ -12,13 +23,16 @@ CORS(app, resources={
         "allow_headers": ["Content-Type", "Authorization"]
     }
 })
+
+# Initialize database
+init_db(app)
+
 def verify_google_token(token):
     try:
         response = requests.get(
             f'https://www.googleapis.com/oauth2/v3/tokeninfo?access_token={token}'
         )
         if response.status_code == 200:
-            print("RFEKGTRKGOKRGOREKGORKFREKOKFWEKF")
             return response.json()
         return None
     except Exception as e:
@@ -41,16 +55,24 @@ def require_auth(f):
         
         if not token_info:
             return jsonify({'error': 'Invalid token'}), 401
+        
+        # Get or create user based on email
+        email = token_info.get('email')
+        if not email:
+            return jsonify({'error': 'Email not found in token'}), 401
+            
+        user, created = User.get_or_create(email)
+        
+        # Add user to request context
+        request.user = user
             
         return f(*args, **kwargs)
     return decorated_function
 
-# Test route to verify server is running
 @app.route('/')
 def home():
     return jsonify({'status': 'Server is running'})
 
-# Main save endpoint
 @app.route('/api/save', methods=['POST'])
 @require_auth
 def save_content():
@@ -58,9 +80,40 @@ def save_content():
         data = request.json
         if not data:
             return jsonify({'error': 'No data provided'}), 400
-            
-        # Here you would normally save the data to your database
-        print(f"Received data: {data}")
+        print(data)
+        request_content = data.get('content')
+        request_tags = data.get('tags')
+
+        if request_content.get('type') == 'text':
+            # Save text content using user.id from authenticated request
+            text_handler.add_text(
+                user_id=request.user.id,  # Using authenticated user's ID
+                content=request_content.get('data'),
+                metadata={
+                    'tags': request_tags,
+                    'email': request.user.email  # Optional: include email in metadata
+                }
+            )
+        elif request_content.get('type') == 'image':
+            # Handle image content
+            image_handler.add_image(
+                user_id=request.user.id,
+                image_path=request_content.get('path'),
+                metadata={
+                    'tags': request_tags,
+                    'email': request.user.email
+                }
+            )
+        elif request_content.get('type') == 'audio':
+            # Handle audio content
+            audio_handler.add_audio(
+                user_id=request.user.id,
+                audio_path=request_content.get('path'),
+                metadata={
+                    'tags': request_tags,
+                    'email': request.user.email
+                }
+            )
         
         return jsonify({
             'status': 'success',
@@ -68,11 +121,39 @@ def save_content():
         })
         
     except Exception as e:
+        print(f"Error saving content: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+@app.route('/api/search', methods=['GET'])
+@require_auth # Uncomment this line to require authentication
+def search_content():
+    try:
+        query = request.args.get('query')
+        types = request.args.get('types').split(',') if request.args.get('types') else None
+
+        if 'text' in types:
+            # Search text content
+            text_results = text_handler.search_texts(
+                user_id=request.user.id,  # Using authenticated user's ID
+                query=query
+            )
+            print(f"Text results: {text_results}")
+
+        if not query:
+            return jsonify({'error': 'No query provided'}), 400
+
+        print(f"Searching for: {query}")
+        print(f"Types: {types}")
+        return jsonify({"results": "PLACEHGOLDER"})
+    except Exception as e:
+        print(f"Error searching content: {e}")
         return jsonify({
             'status': 'error',
             'message': str(e)
         }), 500
 
 if __name__ == '__main__':
-    print("Server starting on http://localhost:6000")
+    print("Server starting on http://localhost:3030")
     app.run(host='0.0.0.0', port=3030, debug=True)
