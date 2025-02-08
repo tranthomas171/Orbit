@@ -7,7 +7,6 @@ const styles = {
     height: '100vh',
     padding: '20px',
     overflow: 'hidden',
-    
   },
   card: {
     position: 'absolute',
@@ -30,6 +29,12 @@ const styles = {
     lineHeight: '1.4',
     color: '#333333',
     overflow: 'hidden',
+  },
+  image: {
+    width: '100%',
+    height: 'auto',
+    borderRadius: '4px',
+    marginBottom: '8px',
   },
   metadata: {
     fontSize: '12px',
@@ -85,25 +90,22 @@ const TextDisplay = () => {
   const [hoveredId, setHoveredId] = useState(null);
 
   const generatePosition = (index, totalItems) => {
-    // Divide the screen into a grid and assign positions with some randomness
     const columns = Math.ceil(Math.sqrt(totalItems));
     const rows = Math.ceil(totalItems / columns);
     
     const column = index % columns;
     const row = Math.floor(index / columns);
     
-    // Calculate base position
-    const baseLeft = (column / columns) * 100; // Use 85% of screen width
-    const baseTop = 10 + ((row / rows) * 70); // Use 70% of remaining screen height starting at 10%
+    const baseLeft = (column / columns) * 100;
+    const baseTop = 10 + ((row / rows) * 70);
     
-    // Add randomness
-    const randomLeft = baseLeft + (Math.random() * 15 - 7.5); // ±7.5%
-    const randomTop = baseTop + (Math.random() * 15 - 7.5); // ±7.5%
+    const randomLeft = baseLeft + (Math.random() * 15 - 7.5);
+    const randomTop = baseTop + (Math.random() * 15 - 7.5);
     
     return {
-      left: Math.max(0, Math.min(100, randomLeft)), // Ensure cards stay within bounds
-      top: Math.max(10, Math.min(85, randomTop)), // Keep between 25% and 85% of screen height
-      rotation: Math.random() * 16 - 20, // Random rotation between -20 and 20 degrees
+      left: Math.max(0, Math.min(100, randomLeft)),
+      top: Math.max(10, Math.min(85, randomTop)),
+      rotation: Math.random() * 16 - 20,
       zIndex: Math.floor(Math.random() * 10),
     };
   };
@@ -135,8 +137,35 @@ const TextDisplay = () => {
   }, []);
 
   const truncateText = (text, maxLength = 100) => {
+    if (!text) return '';
     if (text.length <= maxLength) return text;
     return text.slice(0, maxLength) + '...';
+  };
+
+  const renderContent = (item) => {
+    if (item.type === 'image') {
+      return (
+        <img 
+          src={item.data} 
+          alt={item.metadata.title || 'Image'} 
+          style={styles.image}
+        />
+      );
+    }
+    return (
+      <div style={styles.text}>
+        {truncateText(item.document)}
+        <button 
+          style={styles.showMoreButton}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpandedItem(item);
+          }}
+        >
+          Show More
+        </button>
+      </div>
+    );
   };
 
   if (loading) {
@@ -163,20 +192,9 @@ const TextDisplay = () => {
           onMouseEnter={() => setHoveredId(item.id)}
           onMouseLeave={() => setHoveredId(null)}
         >
-          <div style={styles.text}>
-            {truncateText(item.document)}
-            <button 
-              style={styles.showMoreButton}
-              onClick={(e) => {
-                e.stopPropagation();
-                setExpandedItem(item);
-              }}
-            >
-              Show More
-            </button>
-          </div>
+          {renderContent(item)}
           <div style={styles.metadata}>
-            <div>Title: {item.metadata.title}</div>
+            {item.metadata.title && <div>Title: {item.metadata.title}</div>}
             <div>Time: {new Date(item.metadata.timestamp).toLocaleString()}</div>
             {item.metadata.source_url && (
               <div>Source: {item.metadata.source_url}</div>
@@ -189,9 +207,16 @@ const TextDisplay = () => {
         <>
           <div style={styles.overlay} onClick={() => setExpandedItem(null)} />
           <div style={styles.expandedView}>
-            <div style={styles.text}>{expandedItem.document}</div>
+            {expandedItem.type === 'image' ? (
+              <img 
+                src={expandedItem.data} 
+                alt={expandedItem.metadata.title || 'Image'} 
+                style={styles.image}
+              />
+            ) : (
+              <div style={styles.text}>{expandedItem.document}</div>
+            )}
             <div style={styles.metadata}>
-              <div>Title: {expandedItem.metadata.title}</div>
               <div>Time: {new Date(expandedItem.metadata.timestamp).toLocaleString()}</div>
               {expandedItem.metadata.source_url && (
                 <div>Source: {expandedItem.metadata.source_url}</div>
