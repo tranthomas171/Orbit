@@ -10,38 +10,45 @@ import numpy as np
 
 class MPNetEmbedding:
     def __init__(self):
+        from sentence_transformers import SentenceTransformer
         self.embedding_model = SentenceTransformer("all-mpnet-base-v2")
 
     def __call__(self, input):
         """
-        Encodes input text using the MPNet model.
-
+        Encodes input text using the MPNet model and normalizes the embedding.
+        
         Args:
-            input (List[str]): List of text strings to encode.
-
+            input (str or List[str]): Text or list of texts to encode.
+            
         Returns:
-            List[List[float]]: List of embedding vectors.
+            List[List[float]]: List of normalized embedding vectors
         """
+        if not input:
+            print("Input is empty!")
+            return []  # Return empty list for empty input
+
+        # Ensure input is a list
+        if isinstance(input, str):
+            input = [input]
+
         if torch.cuda.is_available():
             self.embedding_model.to('cuda')
-            embedding = self.embedding_model.encode(input, convert_to_numpy=True).tolist()
-        else:
-            embedding = self.embedding_model.encode(input, convert_to_numpy=True).tolist()
-        return self._normalize_embedding(embedding)
-    def _normalize_embedding(embedding):
-        """
-        Normalizes a single embedding vector to unit length.
+        
+        # Get embeddings
+        embeddings = self.embedding_model.encode(input, convert_to_numpy=True)
+        print(f"Raw embedding shape: {embeddings.shape}")
+        
+        # Normalize each embedding and convert to list
+        normalized = []
+        for emb in embeddings:
+            norm = np.linalg.norm(emb)
+            if norm > 0:
+                normalized.append((emb / norm).tolist())
+            else:
+                normalized.append(emb.tolist())
+            
+        return normalized
 
-        Args:
-            embedding (np.ndarray): The embedding vector.
-
-        Returns:
-            np.ndarray: The normalized embedding vector.
-        """
-        norm = np.linalg.norm(embedding)
-        if norm == 0:
-            return embedding  # Avoid division by zero
-        return embedding / norm 
 class TextHandler:
     client: PersistentClient
 
