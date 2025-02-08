@@ -151,7 +151,7 @@ const OrbitSearch = () => {
           </div>
         </div>
 
-        {/* Add TextDisplay component here */}
+        {/* Insert the TextDisplay component */}
         <div className={`results-container ${isLoaded ? 'loaded' : ''}`}>
           <TextDisplay />
         </div>

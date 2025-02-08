@@ -4,9 +4,10 @@ const styles = {
   container: {
     position: 'relative',
     width: '100vw',
-    height: '100vh',
+    minHeight: '100vh',       // allows container to grow
     padding: '20px',
-    overflow: 'hidden', // Changed back to 'hidden'
+    overflowY: 'auto',        // vertical scrolling enabled
+    backgroundColor: 'rgba(0,0,0,0)',
   },
   card: {
     position: 'absolute',
@@ -48,6 +49,14 @@ const styles = {
   loading: {
     padding: '16px',
     color: '#666666',
+    textAlign: 'center',
+  },
+  loadMoreButton: {
+    display: 'block',
+    margin: '20px auto',
+    padding: '10px 20px',
+    fontSize: '16px',
+    cursor: 'pointer',
   },
   showMoreButton: {
     background: 'none',
@@ -62,7 +71,7 @@ const styles = {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(255, 255, 255, 0)',
     padding: '20px',
     borderRadius: '8px',
     boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
@@ -78,16 +87,19 @@ const styles = {
     right: 0,
     bottom: 0,
     zIndex: 999,
-  }
+  },
 };
 
 const TextDisplay = () => {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState([]);         // loaded items
+  const [page, setPage] = useState(1);              // current page number
+  const [totalCount, setTotalCount] = useState(0);  // total items as reported by the backend
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [expandedItem, setExpandedItem] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
 
+  // Old generatePosition function: assigns a random-ish absolute position.
   const generatePosition = (index, totalItems) => {
     const columns = Math.ceil(Math.sqrt(totalItems));
     const rows = Math.ceil(totalItems / columns);
@@ -104,41 +116,54 @@ const TextDisplay = () => {
     return {
       left: Math.max(0, Math.min(100, randomLeft)),
       top: Math.max(10, Math.min(85, randomTop)),
-      rotation: Math.random() * 16 - 20,
       zIndex: Math.floor(Math.random() * 10),
     };
   };
 
-  const fetchData = useCallback(async () => {
+  // Fetch a page of items from the backend.
+  // It calls /api/populate with page and page_size.
+  const fetchPage = useCallback(async (pageNum) => {
+    setLoading(true);
     try {
-      const response = await fetch('http://localhost:3030/api/populate?page_size=10&page=2', {
+      const response = await fetch(`http://localhost:3030/api/populate?page=${pageNum}&page_size=5`, {
         method: "GET",
-        credentials: "include"
+        credentials: "include",
       });
-
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
-
       const data = await response.json();
-      const totalItems = data.items.length;
-      
-      const newItems = data.items.map((item, index) => ({
-        ...item,
-        position: generatePosition(index, totalItems)
-      }));
-
-      setItems(newItems);
+      setTotalCount(data.total_count);
+      setPage(data.page);
+      // Calculate a vertical offset for this page. For example, each page adds an extra 100px offset.
+      const verticalOffset = (pageNum - 1) * 100;
+      // Update items using a functional update so we don't depend on items.length.
+      setItems(prevItems => {
+        const globalStartIndex = prevItems.length;
+        const newItems = data.items.map((item, idx) => {
+          const pos = generatePosition(globalStartIndex + idx, globalStartIndex + data.items.length);
+          // Add the vertical offset to the top value so that new pages appear lower.
+          return {
+            ...item,
+            position: {
+              ...pos,
+              top: pos.top + verticalOffset,
+            },
+          };
+        });
+        return [...prevItems, ...newItems];
+      });
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []);  // Removed dependency on items.length
 
+  // Load the first page when the component mounts.
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchPage(1);
+  }, [fetchPage]);
 
   const truncateText = (text, maxLength = 100) => {
     if (!text) return '';
@@ -146,6 +171,7 @@ const TextDisplay = () => {
     return text.slice(0, maxLength) + '...';
   };
 
+  // Render card content based on type.
   const renderContent = (item) => {
     if (item.type === 'image') {
       return (
@@ -156,6 +182,23 @@ const TextDisplay = () => {
         />
       );
     }
+    if (item.type === 'youtube_video') {
+      return (
+        <div style={styles.text}>
+          <strong>YouTube:</strong> {truncateText(item.document, 150)}
+          <button 
+            style={styles.showMoreButton}
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpandedItem(item);
+            }}
+          >
+            Show More
+          </button>
+        </div>
+      );
+    }
+    // Default: text, link, audio, etc.
     return (
       <div style={styles.text}>
         {truncateText(item.document)}
@@ -172,10 +215,6 @@ const TextDisplay = () => {
     );
   };
 
-  if (error) {
-    return <div style={styles.error}>Error: {error}</div>;
-  }
-
   return (
     <div style={styles.container}>
       {items.map((item) => (
@@ -187,10 +226,10 @@ const TextDisplay = () => {
             top: `${item.position.top}%`,
             transform: `rotate(${item.position.rotation}deg)`,
             zIndex: hoveredId === item.id ? 100 : item.position.zIndex,
-            ...(hoveredId === item.id && styles.cardHover),
           }}
           onMouseEnter={() => setHoveredId(item.id)}
           onMouseLeave={() => setHoveredId(null)}
+          onClick={() => setExpandedItem(item)}
         >
           {renderContent(item)}
           <div style={styles.metadata}>
@@ -203,6 +242,14 @@ const TextDisplay = () => {
       ))}
 
       {loading && <div style={styles.loading}>Loading more items...</div>}
+      {!loading && items.length < totalCount && (
+        <button 
+          style={styles.loadMoreButton}
+          onClick={() => fetchPage(page + 1)}
+        >
+          Load More
+        </button>
+      )}
 
       {expandedItem && (
         <>
@@ -224,7 +271,7 @@ const TextDisplay = () => {
               )}
             </div>
             <button 
-              style={styles.showMoreButton}
+              style={styles.loadMoreButton}
               onClick={() => setExpandedItem(null)}
             >
               Close
