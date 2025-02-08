@@ -16,7 +16,7 @@ const OrbitSearch = () => {
   const [stars, setStars] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('Everything');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
 
   const filters = ['Everything', 'Images', 'Text', 'Audio'];
 
@@ -93,17 +93,17 @@ const OrbitSearch = () => {
     />
   );
 
-  const renderLoggedInContent = () => (
+  const renderDashboardContent = () => (
     <div className="content-container">
       <header className="header">
-      <div 
-  className={`logo-container ${isLoaded ? 'loaded' : ''}`}
-  onClick={() => setIsLoggedIn(false)}
-  style={{ cursor: 'pointer' }} // Add this to show it's clickable
->
-  <OrbitLogo className="logo" color={colors.accent} />
-  <span className="logo-text">ORBIT</span>
-</div>
+        <div 
+          className={`logo-container ${isLoaded ? 'loaded' : ''}`}
+          onClick={() => setShowDashboard(false)}
+          style={{ cursor: 'pointer' }}
+        >
+          <OrbitLogo className="logo" color={colors.accent} />
+          <span className="logo-text">ORBIT</span>
+        </div>
         <nav className={`nav-container ${isLoaded ? 'loaded' : ''}`}>
           <div className="filter-container">
             <button 
@@ -134,10 +134,10 @@ const OrbitSearch = () => {
               </div>
             )}
           </div>
-          <button className="logout-button" onClick={() => setIsLoggedIn(false)}>Log Out</button>
+          <button className="dashboard-button" onClick={() => setShowDashboard(false)}>Home</button>
         </nav>
       </header>
-
+  
       <main className="main-content">
         <div className={`search-container ${isLoaded ? 'loaded' : ''}`}>
           <div className="search-input-container">
@@ -146,28 +146,23 @@ const OrbitSearch = () => {
               placeholder="Navigate your orbit..."
               className="search-input"
             />
-            <Search className="search-icon" size={20} />
+            <Search className="search-icon" size={24} />
           </div>
-        </div>
-
-        <div className={`saved-urls-container ${isLoaded ? 'loaded' : ''}`}>
-          <h2 className="saved-urls-title">Saved URLs</h2>
         </div>
       </main>
     </div>
   );
 
-  const renderLoggedOutContent = () => (
+  const renderMainContent = () => (
     <div className="content-container">
       <header className="header">
-      <div 
-  className={`logo-container ${isLoaded ? 'loaded' : ''}`}
-  onClick={() => setIsLoggedIn(false)}
-  style={{ cursor: 'pointer' }} // Add this to show it's clickable
->
-  <OrbitLogo className="logo" color={colors.accent} />
-  <span className="logo-text">ORBIT</span>
-</div>
+        <div className={`logo-container ${isLoaded ? 'loaded' : ''}`}>
+          <OrbitLogo className="logo" color={colors.accent} />
+          <span className="logo-text">ORBIT</span>
+        </div>
+        <nav className={`nav-container ${isLoaded ? 'loaded' : ''}`}>
+          <button className="dashboard-button" onClick={() => setShowDashboard(true)}>Dashboard</button>
+        </nav>
       </header>
 
       <main className="main-content">
@@ -183,7 +178,16 @@ const OrbitSearch = () => {
         <div className={`cta-container ${isLoaded ? 'loaded' : ''}`}>
           <button 
             className="cta-button"
-            onClick={() => setIsLoggedIn(true)}
+            onClick={() => {
+              const extensionId = 'mcheadbaojiadbbbakcabnoglhihefhg';
+              const extensionURL = `chrome-extension://${extensionId}/index.html`;
+
+              chrome.tabs.create({ url: extensionURL }, (tab) => {
+                if (chrome.runtime.lastError) {
+                  console.error("Error opening extension:", chrome.runtime.lastError);
+                }
+              });
+            }}
           >
             Get Started
           </button>
@@ -204,7 +208,7 @@ const OrbitSearch = () => {
         {stars.map((star, index) => renderStar(star, index))}
       </div>
 
-      {isLoggedIn ? renderLoggedInContent() : renderLoggedOutContent()}
+      {showDashboard ? renderDashboardContent() : renderMainContent()}
     </div>
   );
 };
