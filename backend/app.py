@@ -281,8 +281,8 @@ def random_items():
 
         # --- TEXT ITEMS ---
         text_collection = text_handler._get_user_collection(user_id)
-        # Note: "ids" is returned by default so we do not include it explicitly.
-        text_data = text_collection.get(include=["metadatas", "documents"])
+        # Include metadatas, documents, and (optionally) uris.
+        text_data = text_collection.get(include=["metadatas", "documents", "uris"])
         text_ids = text_data.get("ids", [])
         if text_ids:
             for idx, item_id in enumerate(text_ids):
@@ -296,39 +296,52 @@ def random_items():
 
         # --- IMAGE ITEMS ---
         image_collection = image_handler._get_user_collection(user_id)
-        image_data = image_collection.get(include=["metadatas", "documents"])
+        # Retrieve metadatas, documents, and uris for images.
+        image_data = image_collection.get(include=["metadatas", "documents", "uris"])
         image_ids = image_data.get("ids", [])
         if image_ids:
             for idx, item_id in enumerate(image_ids):
-                # For images, we may not want to return the raw binary document.
-                # Instead, we can return the stored URI from the metadata.
                 metadata = image_data.get("metadatas", [])[idx]
+                # Get the stored file path from metadata.
+                file_path = metadata.get("file_path")
+                base64_image = None
+                if file_path and os.path.exists(file_path):
+                    with open(file_path, "rb") as f:
+                        img_bytes = f.read()
+                    # Determine the file extension (without the dot)
+                    ext = os.path.splitext(file_path)[1][1:]
+                    # Encode the image bytes to a base64 string
+                    base64_str = base64.b64encode(img_bytes).decode("utf-8")
+                    # Build a data URI for the image
+                    base64_image = f"data:image/{ext};base64,{base64_str}"
                 item = {
                     "id": item_id,
-                    "document": None,
+                    "document": None,  # Not including raw binary data here.
                     "metadata": metadata,
-                    "type": "image"
+                    "type": "image",
+                    "data": base64_image,  # Include the base64-encoded image data.
+                    "uri": file_path      # Optionally include the original file path.
                 }
                 all_items.append(item)
 
         # --- AUDIO ITEMS ---
         try:
             audio_collection = audio_handler._get_user_collection(user_id)
-            audio_data = audio_collection.get(include=["metadatas", "documents"])
+            audio_data = audio_collection.get(include=["metadatas", "documents", "uris"])
             audio_ids = audio_data.get("ids", [])
             if audio_ids:
                 for idx, item_id in enumerate(audio_ids):
-                    # For audio items, return metadata (which should include a file URI or similar).
                     metadata = audio_data.get("metadatas", [])[idx]
                     item = {
                         "id": item_id,
-                        "document": None,
+                        "document": audio_data.get("documents", [])[idx],
                         "metadata": metadata,
-                        "type": "audio"
+                        "type": "audio",
+                        "uri": metadata.get("file_path")
                     }
                     all_items.append(item)
         except Exception as e:
-            # If audio_handler isn't properly set up or returns no items, log and skip it.
+            # If the audio handler isn't properly set up or returns no items, log and skip it.
             print(f"Audio retrieval error: {e}")
 
         # --- SAMPLE RANDOM ITEMS ---
