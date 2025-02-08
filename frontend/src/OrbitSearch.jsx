@@ -16,6 +16,7 @@ const OrbitSearch = () => {
   const [stars, setStars] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('Everything');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const filters = ['Everything', 'Images', 'Text', 'Audio'];
 
@@ -92,6 +93,105 @@ const OrbitSearch = () => {
     />
   );
 
+  const renderLoggedInContent = () => (
+    <div className="content-container">
+      <header className="header">
+      <div 
+  className={`logo-container ${isLoaded ? 'loaded' : ''}`}
+  onClick={() => setIsLoggedIn(false)}
+  style={{ cursor: 'pointer' }} // Add this to show it's clickable
+>
+  <OrbitLogo className="logo" color={colors.accent} />
+  <span className="logo-text">ORBIT</span>
+</div>
+        <nav className={`nav-container ${isLoaded ? 'loaded' : ''}`}>
+          <div className="filter-container">
+            <button 
+              className="filter-button"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            >
+              <span>{selectedFilter}</span>
+              <ChevronDown 
+                size={16} 
+                className={`chevron ${isDropdownOpen ? 'rotated' : ''}`}
+              />
+            </button>
+            
+            {isDropdownOpen && (
+              <div className="dropdown-menu">
+                {filters.map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => {
+                      setSelectedFilter(filter);
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`dropdown-item ${filter === selectedFilter ? 'selected' : ''}`}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button className="logout-button" onClick={() => setIsLoggedIn(false)}>Log Out</button>
+        </nav>
+      </header>
+
+      <main className="main-content">
+        <div className={`search-container ${isLoaded ? 'loaded' : ''}`}>
+          <div className="search-input-container">
+            <input
+              type="text"
+              placeholder="Navigate your orbit..."
+              className="search-input"
+            />
+            <Search className="search-icon" size={20} />
+          </div>
+        </div>
+
+        <div className={`saved-urls-container ${isLoaded ? 'loaded' : ''}`}>
+          <h2 className="saved-urls-title">Saved URLs</h2>
+        </div>
+      </main>
+    </div>
+  );
+
+  const renderLoggedOutContent = () => (
+    <div className="content-container">
+      <header className="header">
+      <div 
+  className={`logo-container ${isLoaded ? 'loaded' : ''}`}
+  onClick={() => setIsLoggedIn(false)}
+  style={{ cursor: 'pointer' }} // Add this to show it's clickable
+>
+  <OrbitLogo className="logo" color={colors.accent} />
+  <span className="logo-text">ORBIT</span>
+</div>
+      </header>
+
+      <main className="main-content">
+        <h1 className={`title ${isLoaded ? 'loaded' : ''}`}>
+          Welcome to Orbit
+        </h1>
+        
+        <p className={`description ${isLoaded ? 'loaded' : ''}`}>
+          Discover a new dimension of content through image, video, audio, and text.
+          Find unexpected connections as you explore new universes.
+        </p>
+        
+        <div className={`cta-container ${isLoaded ? 'loaded' : ''}`}>
+          <button 
+            className="cta-button"
+            onClick={() => setIsLoggedIn(true)}
+          >
+            Get Started
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+
   return (
     <div className="orbit-container" onMouseMove={handleMouseMove}>
       <div 
@@ -104,64 +204,7 @@ const OrbitSearch = () => {
         {stars.map((star, index) => renderStar(star, index))}
       </div>
 
-      <div className="content-container">
-        <header className="header">
-          <div className={`logo-container ${isLoaded ? 'loaded' : ''}`}>
-            <OrbitLogo className="logo" color={colors.accent} />
-            <span className="logo-text">ORBIT</span>
-          </div>
-          
-          <nav className={`nav-container ${isLoaded ? 'loaded' : ''}`}>
-            <div className="filter-container">
-              <button 
-                className="filter-button"
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              >
-                <span>{selectedFilter}</span>
-                <ChevronDown 
-                  size={16} 
-                  className={`chevron ${isDropdownOpen ? 'rotated' : ''}`}
-                />
-              </button>
-              
-              {isDropdownOpen && (
-                <div className="dropdown-menu">
-                  {filters.map((filter) => (
-                    <button
-                      key={filter}
-                      onClick={() => {
-                        setSelectedFilter(filter);
-                        setIsDropdownOpen(false);
-                      }}
-                      className={`dropdown-item ${filter === selectedFilter ? 'selected' : ''}`}
-                    >
-                      {filter}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button className="logout-button">Log Out</button>
-          </nav>
-        </header>
-
-        <main className="main-content">
-          <div className={`search-container ${isLoaded ? 'loaded' : ''}`}>
-            <div className="search-input-container">
-              <input
-                type="text"
-                placeholder="Navigate your orbit..."
-                className="search-input"
-              />
-              <Search className="search-icon" size={20} />
-            </div>
-          </div>
-
-          <div className={`saved-urls-container ${isLoaded ? 'loaded' : ''}`}>
-            <h2 className="saved-urls-title">Saved URLs</h2>
-          </div>
-        </main>
-      </div>
+      {isLoggedIn ? renderLoggedInContent() : renderLoggedOutContent()}
     </div>
   );
 };
