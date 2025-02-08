@@ -63,20 +63,20 @@ const SearchBar = ({ onSearch, selectedFilter = 'Everything' }) => {
   };
 
   return (
-    <div className="relative w-full max-w-2xl">
+    <div className="w-full px-4">
       <div className="relative flex items-center">
+        <Search 
+          className="text-white/50 w-6 h-6 mr-4" 
+        />
         <input
           type="text"
           value={query}
           onChange={handleInputChange}
           onKeyPress={handleKeyPress}
           placeholder="Search your orbit..."
-          className="w-full px-4 py-2 pl-10 pr-10 text-sm bg-white/10 border border-white/20 rounded-lg 
+          className="w-full px-6 py-4 text-lg bg-white/10 border border-white/20 rounded-lg 
                      focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
                      placeholder-white/50 text-white"
-        />
-        <Search 
-          className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" 
         />
         {query && (
           <button
@@ -84,7 +84,7 @@ const SearchBar = ({ onSearch, selectedFilter = 'Everything' }) => {
             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 
                        hover:text-white transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         )}
       </div>
