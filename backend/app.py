@@ -313,7 +313,8 @@ def require_auth(f):
         request.user = user  # Attach user object to the request
         return f(*args, **kwargs)
     return decorated_function
-@app.route('/api/random', methods=['GET'])
+
+@app.route('/api/populate', methods=['GET'])
 @require_auth
 def random_items():
     """
@@ -415,6 +416,7 @@ def random_items():
             "total_count": total_count,
             "page": page,
             "page_size": page_size,
+            "is_last_page": (page == last_page),
             "items": page_items
         })
 
