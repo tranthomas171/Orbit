@@ -1,0 +1,148 @@
+/* Reset default styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.space-container {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  perspective: 1000px;
+  background: radial-gradient(circle at 50% 50%, #1a0533, #0a0115);
+}
+
+.stars-container {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.content-wrapper {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.header {
+  padding: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  transition: all 1s ease;
+}
+
+.logo-container svg {
+  height: 2rem;
+  width: 2rem;
+  margin-right: 0.75rem;
+}
+
+.logo-text {
+  font-size: 1.25rem;
+  font-weight: 300;
+  letter-spacing: 0.05em;
+  color: #FFFFFF;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 1.5rem;
+  transition: all 1s ease;
+}
+
+.sign-in-button {
+  padding: 0.5rem 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  transition: all 0.3s ease;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.sign-in-button:hover {
+  color: #FFFFFF;
+}
+
+.primary-button {
+  border-radius: 9999px;
+  padding: 0.5rem 1.25rem;
+  color: #FFFFFF;
+  background-color: #6347D9;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.primary-button:hover {
+  transform: scale(1.05);
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 1rem;
+}
+
+.title {
+  font-size: 4.5rem;
+  font-weight: 300;
+  letter-spacing: 0.05em;
+  color: #FFFFFF;
+  margin-bottom: 2rem;
+  transition: all 1s ease;
+}
+
+.description {
+  margin-bottom: 4rem;
+  max-width: 36rem;
+  font-size: 1.25rem;
+  line-height: 1.75;
+  letter-spacing: 0.025em;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.8);
+  transition: all 1s ease;
+}
+
+.cta-button {
+  border-radius: 9999px;
+  padding: 1rem 2rem;
+  color: #FFFFFF;
+  background-color: #6347D9;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.cta-button:hover {
+  transform: scale(1.05);
+}
+
+.fade-in {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.loaded {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.star {
+  position: absolute;
+  transition: opacity 2s ease-in-out;
+  border-radius: 50%;
+}
