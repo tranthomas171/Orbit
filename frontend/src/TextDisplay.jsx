@@ -1,29 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
+import useTextDisplayData from './useTextDisplayData'; // Your custom hook
+import DraggableCard from './DraggableCard'; // Import the draggable card
 
 const styles = {
   container: {
     position: 'relative',
     width: '100vw',
-    minHeight: '100vh',       // allows container to grow
+    minHeight: '100vh',
     padding: '20px',
-    overflowY: 'auto',        // vertical scrolling enabled
+    overflowY: 'auto',
     backgroundColor: 'rgba(0,0,0,0)',
-  },
-  card: {
-    position: 'absolute',
-    width: '300px',
-    backgroundColor: '#ffffff',
-    borderRadius: '8px',
-    padding: '12px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    border: '1px solid #e0e0e0',
-    transition: 'transform 0.2s ease-in-out, z-index 0s',
-    cursor: 'pointer',
-  },
-  cardHover: {
-    transform: 'scale(1.02)',
-    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-    zIndex: 2,
   },
   text: {
     fontSize: '14px',
@@ -37,26 +23,24 @@ const styles = {
     borderRadius: '4px',
     marginBottom: '8px',
   },
-  metadata: {
-    fontSize: '12px',
-    color: '#666666',
-    marginTop: '6px',
-  },
-  error: {
-    color: '#ff0000',
-    padding: '16px',
-  },
   loading: {
     padding: '16px',
     color: '#666666',
     textAlign: 'center',
   },
   loadMoreButton: {
-    display: 'block',
-    margin: '20px auto',
-    padding: '10px 20px',
+    position: 'fixed',
+    bottom: '20px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    backgroundColor: '#2563eb',
+    color: '#fff',
+    padding: '12px 24px',
+    border: 'none',
+    borderRadius: '4px',
     fontSize: '16px',
     cursor: 'pointer',
+    zIndex: 1100,
   },
   showMoreButton: {
     background: 'none',
@@ -70,7 +54,8 @@ const styles = {
     position: 'fixed',
     top: '50%',
     left: '50%',
-    transform: 'translate(-50%, -50%)',
+    marginTop: '-200px', // adjust as needed
+    marginLeft: '-150px', // adjust as needed
     backgroundColor: 'rgba(255, 255, 255, 0)',
     padding: '20px',
     borderRadius: '8px',
@@ -90,88 +75,37 @@ const styles = {
   },
 };
 
-const TextDisplay = () => {
-  const [items, setItems] = useState([]);         // loaded items
-  const [page, setPage] = useState(1);              // current page number
-  const [totalCount, setTotalCount] = useState(0);  // total items as reported by the backend
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [expandedItem, setExpandedItem] = useState(null);
-  const [hoveredId, setHoveredId] = useState(null);
-
-  // Old generatePosition function: assigns a random-ish absolute position.
-  const generatePosition = (index, totalItems) => {
-    const columns = Math.ceil(Math.sqrt(totalItems));
-    const rows = Math.ceil(totalItems / columns);
-    
-    const column = index % columns;
-    const row = Math.floor(index / columns);
-    
-    const baseLeft = (column / columns) * 100;
-    const baseTop = 10 + ((row / rows) * 70);
-    
-    const randomLeft = baseLeft + (Math.random() * 15 - 7.5);
-    const randomTop = baseTop + (Math.random() * 15 - 7.5);
-    
-    return {
-      left: Math.max(0, Math.min(100, randomLeft)),
-      top: Math.max(10, Math.min(85, randomTop)),
-      zIndex: Math.floor(Math.random() * 10),
-    };
+const generatePosition = (index, totalItems) => {
+  const columns = Math.ceil(Math.sqrt(totalItems));
+  const rows = Math.ceil(totalItems / columns);
+  
+  const column = index % columns;
+  const row = Math.floor(index / columns);
+  
+  const baseLeft = (column / columns) * 100;
+  const baseTop = 10 + ((row / rows) * 70);
+  
+  return {
+    left: Math.max(0, Math.min(100, baseLeft)),
+    top: Math.max(10, Math.min(85, baseTop)),
+    zIndex: Math.floor(Math.random() * 10),
   };
+};
 
-  // Fetch a page of items from the backend.
-  // It calls /api/populate with page and page_size.
-  const fetchPage = useCallback(async (pageNum) => {
-    setLoading(true);
-    try {
-      const response = await fetch(`http://localhost:3030/api/populate?page=${pageNum}&page_size=5`, {
-        method: "GET",
-        credentials: "include",
-      });
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      const data = await response.json();
-      setTotalCount(data.total_count);
-      setPage(data.page);
-      // Calculate a vertical offset for this page. For example, each page adds an extra 100px offset.
-      const verticalOffset = (pageNum - 1) * 100;
-      // Update items using a functional update so we don't depend on items.length.
-      setItems(prevItems => {
-        const globalStartIndex = prevItems.length;
-        const newItems = data.items.map((item, idx) => {
-          const pos = generatePosition(globalStartIndex + idx, globalStartIndex + data.items.length);
-          // Add the vertical offset to the top value so that new pages appear lower.
-          return {
-            ...item,
-            position: {
-              ...pos,
-              top: pos.top + verticalOffset,
-            },
-          };
-        });
-        return [...prevItems, ...newItems];
-      });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);  // Removed dependency on items.length
+const TextDisplay = () => {
+  const { items, page, totalCount, loading, error, fetchPage } = useTextDisplayData(1, 5);
+  const [expandedItem, setExpandedItem] = useState(null);
 
-  // Load the first page when the component mounts.
-  useEffect(() => {
-    fetchPage(1);
-  }, [fetchPage]);
+  const positionedItems = items.map((item, idx) => {
+    const pos = generatePosition(idx, items.length);
+    return { ...item, position: pos };
+  });
 
   const truncateText = (text, maxLength = 100) => {
     if (!text) return '';
-    if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength) + '...';
+    return text.length <= maxLength ? text : text.slice(0, maxLength) + '...';
   };
 
-  // Render card content based on type.
   const renderContent = (item) => {
     if (item.type === 'image') {
       return (
@@ -198,7 +132,6 @@ const TextDisplay = () => {
         </div>
       );
     }
-    // Default: text, link, audio, etc.
     return (
       <div style={styles.text}>
         {truncateText(item.document)}
@@ -215,30 +148,23 @@ const TextDisplay = () => {
     );
   };
 
+  useEffect(() => {
+    fetchPage(1);
+  }, [fetchPage]);
+
   return (
     <div style={styles.container}>
-      {items.map((item) => (
-        <div
+      {positionedItems.map((item) => (
+        <DraggableCard
           key={item.id}
-          style={{
-            ...styles.card,
-            left: `${item.position.left}%`,
-            top: `${item.position.top}%`,
-            transform: `rotate(${item.position.rotation}deg)`,
-            zIndex: hoveredId === item.id ? 100 : item.position.zIndex,
-          }}
-          onMouseEnter={() => setHoveredId(item.id)}
-          onMouseLeave={() => setHoveredId(null)}
+          item={item}
+          initialPosition={item.position}
+          renderContent={renderContent}
+          metadata={item.metadata}
           onClick={() => setExpandedItem(item)}
-        >
-          {renderContent(item)}
-          <div style={styles.metadata}>
-            <div>Time: {new Date(item.metadata.timestamp).toLocaleString()}</div>
-            {item.metadata.source_url && (
-              <div>Source: {item.metadata.source_url}</div>
-            )}
-          </div>
-        </div>
+          onMouseEnter={() => {}}
+          onMouseLeave={() => {}}
+        />
       ))}
 
       {loading && <div style={styles.loading}>Loading more items...</div>}
