@@ -150,7 +150,6 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     console.error("Save error:", error);
   }
 });
-
 async function getSelectedContent(info, tab) {
   const content = {
     type: null,
@@ -163,23 +162,31 @@ async function getSelectedContent(info, tab) {
     content.type = "text";
     content.data = info.selectionText;
   } else if (info.srcUrl) {
-    if (info.mediaType === "image") {
-      content.type = "image";
-      try {
-        // Convert the image URL to a data URI
-        content.data = await imageUrlToDataUri(info.srcUrl);
-      } catch (error) {
-        console.error("Error converting image to data URI:", error);
-        // Optionally, you can fallback to sending the URL if conversion fails.
+    // Check if the URL is a YouTube URL.
+    // This regex will match common YouTube URL patterns.
+    if (/youtube\.com\/watch\?v=|youtu\.be\//i.test(info.srcUrl)) {
+      content.type = "youtube_video";
+      content.data = info.srcUrl;
+    } else {
+      // Not a YouTube URL; handle other media types.
+      if (info.mediaType === "image") {
+        content.type = "image";
+        try {
+          // Convert the image URL to a data URI.
+          content.data = await imageUrlToDataUri(info.srcUrl);
+        } catch (error) {
+          console.error("Error converting image to data URI:", error);
+          // Optionally, fallback to sending the URL if conversion fails.
+          content.data = info.srcUrl;
+        }
+      } else if (info.mediaType === "audio") {
+        content.type = "audio";
         content.data = info.srcUrl;
       }
-    } else if (info.mediaType === "audio") {
-      content.type = "audio";
-      content.data = info.srcUrl;
     }
   } else if (info.pageUrl) {
     content.type = "webpage";
-    // Inject content script to get page content
+    // Inject a content script to retrieve page content.
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       function: () => {

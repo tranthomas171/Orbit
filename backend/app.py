@@ -4,12 +4,13 @@ from functools import wraps
 import requests
 from data_handlers import TextHandler, ImageHandler, AudioHandler
 import chromadb
-from users.user_management import init_db, User, db
+from users.user_management import init_db, User
 from dotenv import load_dotenv
 import os
 import random
 import base64
 import hashlib
+from helpers.youtube import get_youtube_title
 
 load_dotenv()
 
@@ -142,7 +143,6 @@ def save_content():
                 }
             )
         elif request_content.get('type') == 'image':
-            print(dict.keys(request_content))
             image_handler.add_image(
                 user_id=request.user.id,
                 image_data=request_content.get('data'),
@@ -160,6 +160,25 @@ def save_content():
                     'tags': request_tags,
                     'email': request.user.email,
                     'type': 'audio'
+                }
+            )
+        elif request_content.get('type') == 'youtube_video':
+            # Process YouTube video: extract its title using pytube.
+            youtube_url = request_content.get('data')
+            try:
+                video_title = get_youtube_title(youtube_url)
+            except Exception as e:
+                print(f"Error extracting YouTube title: {e}")
+                video_title = youtube_url  # Fallback to the URL if title extraction fails.
+
+            text_handler.add_text(
+                user_id=request.user.id,
+                content=video_title,
+                meta={
+                    'tags': request_tags,
+                    'email': request.user.email,
+                    'type': 'youtube_video',
+                    'youtube_url': youtube_url
                 }
             )
         else:
