@@ -260,28 +260,82 @@ def search_content():
 def home():
     return jsonify({'status': 'Server is running'})
 
+import os
+import random
+import hashlib
+import base64
+from flask import Flask, request, jsonify, redirect, session
+from flask_cors import CORS
+from functools import wraps
+import requests
+from data_handlers import TextHandler, ImageHandler, AudioHandler
+import chromadb
+from users.user_management import init_db, User, db
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+# Initialize ChromaDB client
+chroma_path = "OrbitDB"
+client = chromadb.PersistentClient(path=chroma_path)
+
+# Initialize handlers
+text_handler = TextHandler(client)
+image_handler = ImageHandler(client)
+audio_handler = AudioHandler(client)
+
+app = Flask(__name__)
+CORS(app, supports_credentials=True, resources={
+    r"/api/*": {
+        "origins": ["chrome-extension://*", "http://localhost:5173"],
+        "methods": ["POST", "GET", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
+app.config["SESSION_COOKIE_SECURE"] = False
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.secret_key = os.getenv("SESSION_SECRET")
+
+# Initialize database
+init_db(app)
+
+# (Other endpoints such as /api/login, /api/save, /api/search, etc.)
+
+def require_auth(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({'error': 'User not logged in'}), 401
+        user = User.query.get(session['user_id'])
+        if not user:
+            return jsonify({'error': 'Invalid session or user not found'}), 401
+        request.user = user  # Attach user object to the request
+        return f(*args, **kwargs)
+    return decorated_function
 @app.route('/api/random', methods=['GET'])
 @require_auth
 def random_items():
     """
-    Return a JSON response with N random items sampled from the user's stored items
-    across texts, images, and audio. The number N can be provided via the 'n' query
-    parameter (defaulting to 5 if not specified).
+    Return a paginated JSON response with all the user's stored items
+    (text, image, and audio) in a stable random order. Use 'page' and 
+    'page_size' query parameters for pagination. If the requested page is 
+    beyond the total number of pages, return the last page.
     """
     try:
-        # Get the desired sample count from query parameters; default to 5 if not provided.
-        n_param = request.args.get('n', '5')
+        # Get pagination parameters; default to page=1, page_size=5.
         try:
-            n = int(n_param)
+            page = int(request.args.get('page', '1'))
+            page_size = int(request.args.get('page_size', '5'))
         except ValueError:
-            n = 5
+            page = 1
+            page_size = 5
 
         user_id = str(request.user.id)
         all_items = []
 
         # --- TEXT ITEMS ---
         text_collection = text_handler._get_user_collection(user_id)
-        # Include metadatas, documents, and (optionally) uris.
         text_data = text_collection.get(include=["metadatas", "documents", "uris"])
         text_ids = text_data.get("ids", [])
         if text_ids:
@@ -296,31 +350,26 @@ def random_items():
 
         # --- IMAGE ITEMS ---
         image_collection = image_handler._get_user_collection(user_id)
-        # Retrieve metadatas, documents, and uris for images.
         image_data = image_collection.get(include=["metadatas", "documents", "uris"])
         image_ids = image_data.get("ids", [])
         if image_ids:
             for idx, item_id in enumerate(image_ids):
                 metadata = image_data.get("metadatas", [])[idx]
-                # Get the stored file path from metadata.
                 file_path = metadata.get("file_path")
                 base64_image = None
                 if file_path and os.path.exists(file_path):
                     with open(file_path, "rb") as f:
                         img_bytes = f.read()
-                    # Determine the file extension (without the dot)
-                    ext = os.path.splitext(file_path)[1][1:]
-                    # Encode the image bytes to a base64 string
+                    ext = os.path.splitext(file_path)[1][1:]  # remove the dot
                     base64_str = base64.b64encode(img_bytes).decode("utf-8")
-                    # Build a data URI for the image
                     base64_image = f"data:image/{ext};base64,{base64_str}"
                 item = {
                     "id": item_id,
-                    "document": None,  # Not including raw binary data here.
+                    "document": None,
                     "metadata": metadata,
                     "type": "image",
                     "data": base64_image,  # Include the base64-encoded image data.
-                    "uri": file_path      # Optionally include the original file path.
+                    "uri": file_path
                 }
                 all_items.append(item)
 
@@ -341,25 +390,32 @@ def random_items():
                     }
                     all_items.append(item)
         except Exception as e:
-            # If the audio handler isn't properly set up or returns no items, log and skip it.
             print(f"Audio retrieval error: {e}")
 
-        # --- SAMPLE RANDOM ITEMS ---
-        if not all_items:
-            return jsonify({
-                "status": "success",
-                "count": 0,
-                "items": [],
-                "message": "No stored items found for this user."
-            })
+        # --- Create a stable random ordering ---
+        # Use a seed based on the user_id so that the order is the same across subsequent calls.
+        seed = int(hashlib.sha256(user_id.encode('utf-8')).hexdigest(), 16)
+        rng = random.Random(seed)
+        rng.shuffle(all_items)
 
-        # If the total number of items is less than n, return all items.
-        sampled_items = random.sample(all_items, min(n, len(all_items)))
+        total_count = len(all_items)
+        # Compute the last page number.
+        last_page = (total_count + page_size - 1) // page_size if total_count > 0 else 1
+
+        # If the requested page is beyond the last page, use the last page.
+        if page > last_page:
+            page = last_page
+
+        start = (page - 1) * page_size
+        end = start + page_size
+        page_items = all_items[start:end]
 
         return jsonify({
             "status": "success",
-            "count": len(sampled_items),
-            "items": sampled_items
+            "total_count": total_count,
+            "page": page,
+            "page_size": page_size,
+            "items": page_items
         })
 
     except Exception as e:
