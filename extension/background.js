@@ -92,16 +92,14 @@ async function forceNewAuth() {
     return null;
   }
 }
-
 function createContextMenus() {
-  // Create parent menu item
+  // Parent menu for non-link contexts
   chrome.contextMenus.create({
     id: "sendIntoOrbit",
     title: "Send into Orbit",
     contexts: ["selection", "image", "audio", "page"]
   });
 
-  // Create child menu items
   chrome.contextMenus.create({
     id: "automatically",
     parentId: "sendIntoOrbit",
@@ -115,17 +113,49 @@ function createContextMenus() {
     title: "Manually",
     contexts: ["selection", "image", "audio", "page"]
   });
+
+  // For link contexts, add two separate options.
+  chrome.contextMenus.create({
+    id: "sendLink",
+    title: "Send Link into Orbit",
+    contexts: ["link"]
+  });
+
+  chrome.contextMenus.create({
+    id: "sendLinkText",
+    title: "Send Link Text into Orbit",
+    contexts: ["link"]
+  });
 }
 
-// Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   try {
-    // Get selected content based on context
-    const content = await getSelectedContent(info, tab);
+    let content;
+    // Special handling for link contexts.
+    if (info.menuItemId === "sendLink") {
+      // Send the link URL as a 'link' type.
+      content = {
+        type: "link",
+        data: info.linkUrl,
+        source_url: tab.url,
+        timestamp: new Date().toISOString()
+      };
+    } else if (info.menuItemId === "sendLinkText") {
+      // Send the link text as text. If no selection is available, fall back to the URL.
+      content = {
+        type: "text",
+        data: info.selectionText || info.linkUrl,
+        source_url: tab.url,
+        timestamp: new Date().toISOString()
+      };
+    } else {
+      // For other contexts (text, image, audio, webpage), use your existing helper.
+      content = await getSelectedContent(info, tab);
+    }
     if (!content) return;
 
+    // If the user selected the "manually" menu option, open the tagging popup.
     if (info.menuItemId === "manually") {
-      // Open popup for manual tagging
       chrome.windows.create(
         {
           url: "tagPopup.html",
@@ -135,7 +165,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
           focused: true
         },
         (window) => {
-          // Store content temporarily to be accessed by the popup
+          // Store the content temporarily so the popup can access it.
           chrome.storage.local.set({
             pendingContent: content,
             sourceTab: tab.id
@@ -143,13 +173,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         }
       );
     } else {
-      // Quick save with no tags
+      // For all other cases, automatically save the content.
       await saveContent(content, []);
     }
   } catch (error) {
     console.error("Save error:", error);
   }
 });
+
 async function getSelectedContent(info, tab) {
   const content = {
     type: null,

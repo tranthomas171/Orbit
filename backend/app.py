@@ -126,6 +126,7 @@ def auth():
 def save_content():
     try:
         data = request.get_json()
+        print(f"DATAET TPYE: {data}")
         if not data:
             return jsonify({'error': 'No data provided'}), 400
 
@@ -162,25 +163,25 @@ def save_content():
                     'type': 'audio'
                 }
             )
-        elif request_content.get('type') == 'youtube_video':
-            # Process YouTube video: extract its title using pytube.
-            youtube_url = request_content.get('data')
-            try:
-                video_title = get_youtube_title(youtube_url)
-            except Exception as e:
-                print(f"Error extracting YouTube title: {e}")
-                video_title = youtube_url  # Fallback to the URL if title extraction fails.
-
-            text_handler.add_text(
-                user_id=request.user.id,
-                content=video_title,
-                meta={
-                    'tags': request_tags,
-                    'email': request.user.email,
-                    'type': 'youtube_video',
-                    'youtube_url': youtube_url
-                }
-            )
+        elif request_content.get('type') == 'link':
+            link_url = request_content.get('data')
+            # Check if the link is a YouTube URL.
+            if "youtube.com" in link_url or "youtu.be" in link_url:
+                try:
+                    video_title = get_youtube_title(link_url)
+                except Exception as e:
+                    print(f"Error extracting YouTube title: {e}")
+                    video_title = link_url  # Fallback to the URL if title extraction fails.
+                text_handler.add_text(
+                    user_id=request.user.id,
+                    content=video_title,
+                    meta={
+                        'tags': request_tags,
+                        'email': request.user.email,
+                        'type': 'youtube_video',
+                        'youtube_url': link_url
+                    }
+                )
         else:
             return jsonify({'error': 'Unsupported content type'}), 400
 

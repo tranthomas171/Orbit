@@ -113,7 +113,7 @@ class TextHandler:
             title (str, optional): Title for the text content.
             meta (dict, optional): Additional metadata to include.
         """
-        print(content)
+
         try:
             # Generate a unique ID for the text
             unique_id = self._generate_id(content)
