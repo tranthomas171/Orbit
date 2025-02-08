@@ -1,0 +1,9 @@
+*.pem
+*.der
+*.sqlite3
+*/data/*
+.gitignore
+.DS_Store
+.gitignore
+*.pyc
+*.db
