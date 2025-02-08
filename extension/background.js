@@ -165,7 +165,14 @@ async function getSelectedContent(info, tab) {
   } else if (info.srcUrl) {
     if (info.mediaType === "image") {
       content.type = "image";
-      content.data = info.srcUrl;
+      try {
+        // Convert the image URL to a data URI
+        content.data = await imageUrlToDataUri(info.srcUrl);
+      } catch (error) {
+        console.error("Error converting image to data URI:", error);
+        // Optionally, you can fallback to sending the URL if conversion fails.
+        content.data = info.srcUrl;
+      }
     } else if (info.mediaType === "audio") {
       content.type = "audio";
       content.data = info.srcUrl;
@@ -188,7 +195,7 @@ async function getSelectedContent(info, tab) {
 
   return content;
 }
-
+ 
 async function saveContent(content, tags = []) {
   const response = await fetch("http://localhost:3030/api/save", {
     method: "POST",
@@ -207,4 +214,21 @@ async function saveContent(content, tags = []) {
   }
 
   return response.json();
+}
+
+async function imageUrlToDataUri(url) {
+  // Fetch the image as a Blob
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.statusText}`);
+  }
+  const blob = await response.blob();
+
+  // Convert the Blob to a data URI using FileReader
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }

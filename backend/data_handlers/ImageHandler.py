@@ -1,30 +1,33 @@
 import os
 import hashlib
+import json
+import base64
+from datetime import datetime
 from chromadb.utils.embedding_functions import OpenCLIPEmbeddingFunction
-
+from chromadb.utils.data_loaders import ImageLoader
 class ImageHandler:
     def __init__(self, client, base_folder='data/images'):
         """
-        Initialize the ImageHandler with ChromaDB client and a base folder for storing images.
+        Initialize the ImageHandler with a ChromaDB client and a base folder for storing images.
         Each user will have a separate subdirectory in this folder.
         """
         self.client = client
         self.base_folder = base_folder
         os.makedirs(self.base_folder, exist_ok=True)
+        self.embedding_function = OpenCLIPEmbeddingFunction()
+        self.data_loader = ImageLoader()
 
-    def _generate_id(self, file_path):
+    def _generate_id(self, image_bytes):
         """
         Generate a unique ID for the image using its content hash.
 
         Args:
-            file_path (str): Path to the image file.
+            image_bytes (bytes): Raw image data.
 
         Returns:
             str: Unique ID.
         """
-        with open(file_path, 'rb') as f:
-            file_hash = hashlib.sha256(f.read()).hexdigest()
-        return file_hash
+        return hashlib.sha256(image_bytes).hexdigest()
 
     def _get_user_folder(self, user_id):
         """
@@ -52,65 +55,132 @@ class ImageHandler:
         """
         return self.client.get_or_create_collection(
             name=f'image_collection_{user_id}',
-            embedding_function=OpenCLIPEmbeddingFunction()
+            embedding_function=self.embedding_function,
+            data_loader=self.data_loader
         )
 
-    def add_image(self, user_id, image_path):
+    def _sanitize_metadata(self, metadata):
         """
-        Add an image for a specific user to the ChromaDB collection.
+        Sanitize metadata by replacing None values with an empty string and serializing unsupported types.
+
+        Args:
+            metadata (dict): Metadata dictionary.
+
+        Returns:
+            dict: Sanitized metadata.
+        """
+        sanitized_metadata = {}
+        for key, value in metadata.items():
+            if value is None:
+                sanitized_metadata[key] = ""
+            elif isinstance(value, (str, int, float, bool)):
+                sanitized_metadata[key] = value
+            else:
+                try:
+                    sanitized_metadata[key] = json.dumps(value, ensure_ascii=False)
+                except Exception as e:
+                    print(f"Failed to serialize metadata key '{key}' with value '{value}': {e}")
+                    sanitized_metadata[key] = ""
+        return sanitized_metadata
+
+    def add_image(self, user_id, image_data, meta=None, source_url=None, title=None):
+        """
+        Add an image (provided as a data URI) for a specific user to the ChromaDB collection.
 
         Args:
             user_id (str): Unique identifier for the user.
-            image_path (str): Path to the image file.
+            image_data (str): The image data as a data URI.
+            meta (dict, optional): Additional metadata to include.
+
+        Returns:
+            str: The unique ID of the added image.
         """
         try:
-            # Generate a unique ID for the image
-            unique_id = self._generate_id(image_path)
+            # Ensure the provided image_data is a valid data URI.
+            if not image_data.startswith("data:image"):
+                raise ValueError("Provided image data is not a valid data URI.")
 
-            # Copy the image to the user's folder
+            # Split the data URI into header and encoded data.
+            try:
+                header, encoded = image_data.split(',', 1)
+            except ValueError:
+                raise ValueError("Invalid data URI format. Expected a comma separator.")
+
+            # Decode the base64 encoded image data.
+            try:
+                image_bytes = base64.b64decode(encoded)
+            except Exception as e:
+                raise ValueError("Error decoding base64 image data.") from e
+
+            # Extract file format (e.g., 'png') from the header (e.g., "data:image/png;base64").
+            try:
+                file_format = header.split(';')[0].split('/')[1]
+            except IndexError:
+                raise ValueError("Could not determine image format from data URI header.")
+
+            # Generate a unique ID based on the image data.
+            unique_id = self._generate_id(image_bytes)
+
+            # Prepare the destination file path.
             user_folder = self._get_user_folder(user_id)
-            file_name = os.path.basename(image_path)
-            destination = os.path.join(user_folder, unique_id + os.path.splitext(file_name)[1])
-            if not os.path.exists(destination):
-                with open(image_path, 'rb') as source_file:
-                    with open(destination, 'wb') as dest_file:
-                        dest_file.write(source_file.read())
+            file_name = f"{unique_id}.{file_format}"
+            file_path = os.path.join(user_folder, file_name)
 
-            # Add the image to the user's collection
+            # Build the metadata dictionary.
+            metadata = {
+                'user_id': user_id,
+                'timestamp': datetime.now().isoformat(),
+                'file_path': file_path,
+                'source': 'data_uri',
+                source_url: source_url,
+                'title': title,
+            }
+            if meta:
+                metadata.update(meta)
+            metadata = self._sanitize_metadata(metadata)
+
+            # Save the image file if it doesn't already exist.
+            if not os.path.exists(file_path):
+                with open(file_path, 'wb') as f:
+                    f.write(image_bytes)
+
+            # Add the image to the user's ChromaDB collection.
             user_collection = self._get_user_collection(user_id)
             user_collection.add(
                 ids=[unique_id],
-                embeddings=[],  # The embedding function handles embedding
-                metadatas=[{'uri': destination, 'user_id': user_id}],
-                documents=[open(destination, 'rb').read()]
+                documents=[image_bytes],  # Storing the raw image bytes.
+                metadatas=[metadata]
             )
 
             print(f"Image {unique_id} added successfully for user {user_id}.")
+            return unique_id
         except Exception as e:
             print(f"Failed to add image for user {user_id}: {e}")
+            return None
 
-    def retrieve_images(self, user_id, query, n_results=5):
+    def search_images(self, user_id, query, n_results=5):
         """
         Retrieve images for a specific user using a query.
 
         Args:
             user_id (str): Unique identifier for the user.
             query (str): Query text to search the user's images.
-            n_results (int): Number of results to return (default: 5).
+            n_results (int, optional): Number of results to return (default: 5).
 
         Returns:
-            List[Dict]: Matching images with metadata.
+            dict: Query results containing matching images and metadata.
         """
         try:
             user_collection = self._get_user_collection(user_id)
             results = user_collection.query(
                 query_texts=[query],
-                n_results=n_results
+                n_results=n_results,
+                include=['documents', 'metadatas', 'distances']
             )
             return results
         except Exception as e:
             print(f"Failed to retrieve images for user {user_id}: {e}")
-            return []
+            return {}
 
     def delete_image(self, user_id, image_id):
         """
@@ -122,13 +192,14 @@ class ImageHandler:
         """
         try:
             user_collection = self._get_user_collection(user_id)
-            metadata = user_collection.get(ids=[image_id])
-            if metadata:
-                file_path = metadata[0].get('uri')
+            result = user_collection.get(ids=[image_id])
+            if result and result.get('metadatas'):
+                metadata = result['metadatas'][0]
+                file_path = metadata.get('file_path')
                 if file_path and os.path.exists(file_path):
                     os.remove(file_path)
 
-            # Delete from the user's collection
+            # Delete from the user's collection.
             user_collection.delete(ids=[image_id])
             print(f"Image {image_id} deleted successfully for user {user_id}.")
         except Exception as e:

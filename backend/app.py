@@ -126,7 +126,6 @@ def save_content():
         if not data:
             return jsonify({'error': 'No data provided'}), 400
 
-        print(data)
         request_content = data.get('content')
         request_tags = data.get('tags')
 
@@ -141,10 +140,11 @@ def save_content():
                 }
             )
         elif request_content.get('type') == 'image':
+            print(dict.keys(request_content))
             image_handler.add_image(
                 user_id=request.user.id,
-                image_path=request_content.get('path'),
-                metadata={
+                image_data=request_content.get('data'),
+                meta={
                     'tags': request_tags,
                     'email': request.user.email,
                     'type': 'image'
