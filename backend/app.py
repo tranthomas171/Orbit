@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import os
 import random
 import base64
+import hashlib
 
 load_dotenv()
 
@@ -259,48 +260,6 @@ def search_content():
 @app.route('/')
 def home():
     return jsonify({'status': 'Server is running'})
-
-import os
-import random
-import hashlib
-import base64
-from flask import Flask, request, jsonify, redirect, session
-from flask_cors import CORS
-from functools import wraps
-import requests
-from data_handlers import TextHandler, ImageHandler, AudioHandler
-import chromadb
-from users.user_management import init_db, User, db
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
-# Initialize ChromaDB client
-chroma_path = "OrbitDB"
-client = chromadb.PersistentClient(path=chroma_path)
-
-# Initialize handlers
-text_handler = TextHandler(client)
-image_handler = ImageHandler(client)
-audio_handler = AudioHandler(client)
-
-app = Flask(__name__)
-CORS(app, supports_credentials=True, resources={
-    r"/api/*": {
-        "origins": ["chrome-extension://*", "http://localhost:5173"],
-        "methods": ["POST", "GET", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
-    }
-})
-app.config["SESSION_COOKIE_SECURE"] = False
-app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.secret_key = os.getenv("SESSION_SECRET")
-
-# Initialize database
-init_db(app)
-
-# (Other endpoints such as /api/login, /api/save, /api/search, etc.)
 
 def require_auth(f):
     @wraps(f)
