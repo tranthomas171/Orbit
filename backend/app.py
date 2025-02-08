@@ -22,8 +22,8 @@ audio_handler = AudioHandler(client)
 app = Flask(__name__)
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["chrome-extension://*"],
-        "methods": ["POST", "OPTIONS"],
+        "origins": ["chrome-extension://*", "http://localhost:5173"],
+        "methods": ["POST", "GET", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"]
     }
 })
@@ -46,64 +46,100 @@ def verify_google_token(token):
         print(f"Token verification error: {e}")
         return None
 
+# ------------------------------------------------------------------------------
+# New require_auth decorator: now checks the session instead of Authorization header.
+# ------------------------------------------------------------------------------
 def require_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        auth_header = request.headers.get('Authorization')
-        if not auth_header:
-            return jsonify({'error': 'No authorization header'}), 401
-
-        try:
-            token = auth_header.split(' ')[1]
-        except IndexError:
-            return jsonify({'error': 'Invalid authorization header format'}), 401
-
-        token_info = verify_google_token(token)
-        
-        if not token_info:
-            return jsonify({'error': 'Invalid token'}), 401
-        
-        # Get or create user based on email
-        email = token_info.get('email')
-        if not email:
-            return jsonify({'error': 'Email not found in token'}), 401
-            
-        user, created = User.get_or_create(email)
-        
-        # Add user to request context
-        request.user = user
-            
+        if 'user_id' not in session:
+            return jsonify({'error': 'User not logged in'}), 401
+        # Retrieve the user from the database using the session value.
+        user = User.query.get(session['user_id'])
+        if not user:
+            return jsonify({'error': 'Invalid session or user not found'}), 401
+        request.user = user  # Make user available to the endpoint.
         return f(*args, **kwargs)
     return decorated_function
 
-@app.route('/')
-def home():
-    return jsonify({'status': 'Server is running'})
+# ------------------------------------------------------------------------------
+# New Login endpoint:
+# This endpoint receives a POST with the Google token, validates it,
+# then creates or retrieves the user and sets session variables.
+# ------------------------------------------------------------------------------
+@app.route('/api/login', methods=['POST'])
+def login():
+    try:
+        data = request.get_json()
+        if not data or 'token' not in data:
+            return jsonify({'error': 'No token provided'}), 400
 
+        token = data['token']
+        token_info = verify_google_token(token)
+        if not token_info:
+            return jsonify({'error': 'Invalid token'}), 401
+
+        email = token_info.get('email')
+        if not email:
+            return jsonify({'error': 'Email not found in token'}), 401
+
+        # Get or create the user based on email.
+        user, created = User.get_or_create(email)
+        # Store user details in the session.
+        session['user_id'] = user.id
+        session['email'] = user.email
+
+        return jsonify({
+            'status': 'success',
+            'user': {
+                'id': user.id,
+                'email': user.email
+            }
+        })
+    except Exception as e:
+        print(f"Error logging in: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ------------------------------------------------------------------------------
+# Auth check endpoint.
+# ------------------------------------------------------------------------------
+@app.route('/api/auth', methods=['GET'])
+@require_auth
+def auth():
+    return jsonify({
+        'status': 'authenticated',
+        'user': {
+            'id': request.user.id,
+            'email': request.user.email
+        }
+    })
+
+# ------------------------------------------------------------------------------
+# Save Content Endpoint: now uses the session-based user.
+# ------------------------------------------------------------------------------
 @app.route('/api/save', methods=['POST'])
 @require_auth
 def save_content():
     try:
-        data = request.json
+        data = request.get_json()
         if not data:
             return jsonify({'error': 'No data provided'}), 400
+
         print(data)
         request_content = data.get('content')
         request_tags = data.get('tags')
 
         if request_content.get('type') == 'text':
-            # Save text content using user.id from authenticated request
             text_handler.add_text(
-                user_id=request.user.id,  # Using authenticated user's ID
+                user_id=request.user.id,  # Using authenticated user's ID from the session.
                 content=request_content.get('data'),
                 meta={
                     'tags': request_tags,
-                    'email': request.user.email,  # Optional: include email in metadata
+                    'email': request.user.email,
                     'type': 'text'
                 }
             )
         elif request_content.get('type') == 'image':
-            # Handle image content
             image_handler.add_image(
                 user_id=request.user.id,
                 image_path=request_content.get('path'),
@@ -114,7 +150,6 @@ def save_content():
                 }
             )
         elif request_content.get('type') == 'audio':
-            # Handle audio content
             audio_handler.add_audio(
                 user_id=request.user.id,
                 audio_path=request_content.get('path'),
@@ -124,42 +159,46 @@ def save_content():
                     'type': 'audio'
                 }
             )
-        
+        else:
+            return jsonify({'error': 'Unsupported content type'}), 400
+
         return jsonify({
             'status': 'success',
             'message': 'Content saved successfully'
         })
-        
+
     except Exception as e:
         print(f"Error saving content: {e}")
         return jsonify({
             'status': 'error',
             'message': str(e)
         }), 500
+
+# ------------------------------------------------------------------------------
+# Search Content Endpoint: now requires a logged-in user.
+# ------------------------------------------------------------------------------
 @app.route('/api/search', methods=['GET'])
-#@require_auth
+@require_auth
 def search_content():
     try:
         query = request.args.get('query')
-        types = request.args.get('types').split(',') if request.args.get('types') else None
-        # If no user is authenticated, testing user is created
-        if not hasattr(request, 'user') or not request.user:
-            request.user = User.get_or_create("ethan.wanq@gmail.com")[0]
+        if not query:
+            return jsonify({'error': 'No query provided'}), 400
 
-        if 'text' in types:
-            # Search text content
+        types_param = request.args.get('types')
+        types = types_param.split(',') if types_param else None
+
+        # For example, search only in text data if specified.
+        if types and 'text' in types:
             text_results = text_handler.search_texts(
-                user_id=request.user.id,  # Using authenticated user's ID
+                user_id=request.user.id,
                 query=query
             )
             print(f"Text results: {text_results}")
 
-        if not query:
-            return jsonify({'error': 'No query provided'}), 400
-
         print(f"Searching for: {query}")
         print(f"Types: {types}")
-        return jsonify({"results": "PLACEHGOLDER"})
+        return jsonify({"results": "PLACEHOLDER"})  # Replace with actual search results.
     except Exception as e:
         print(f"Error searching content: {e}")
         return jsonify({
@@ -167,20 +206,10 @@ def search_content():
             'message': str(e)
         }), 500
 
-# Authentication route
-@app.route('/api/auth', methods=['POST'])
-@require_auth
-def auth():
-    try:
-        if not hasattr(request, 'user') or not request.user:
-            return jsonify({'error': 'User not found'}), 404
-        return redirect("localhost:5173")
-    except Exception as e:
-        print(f"Error authenticating user: {e}")
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
+
+@app.route('/')
+def home():
+    return jsonify({'status': 'Server is running'})
 
 if __name__ == '__main__':
     print("Server starting on http://localhost:3030")

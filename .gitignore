@@ -4,9 +4,9 @@
 */data/*
 .gitignore
 .DS_Store
-.gitignore
 *.pyc
 *.db
 node_modules
 */data/*
 */OrbitDB/*
+*.env
