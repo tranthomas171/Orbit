@@ -1,10 +1,14 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect, session
 from flask_cors import CORS
 from functools import wraps
 import requests
 from data_handlers import TextHandler, ImageHandler, AudioHandler
 import chromadb
 from users.user_management import init_db, User, db
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # Initialize ChromaDB client
 chroma_path = "OrbitDB"
@@ -23,6 +27,9 @@ CORS(app, resources={
         "allow_headers": ["Content-Type", "Authorization"]
     }
 })
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.secret_key = os.getenv("SESSION_SECRET")
 
 # Initialize database
 init_db(app)
@@ -155,6 +162,21 @@ def search_content():
         return jsonify({"results": "PLACEHGOLDER"})
     except Exception as e:
         print(f"Error searching content: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+# Authentication route
+@app.route('/api/auth', methods=['POST'])
+@require_auth
+def auth():
+    try:
+        if not hasattr(request, 'user') or not request.user:
+            return jsonify({'error': 'User not found'}), 404
+        return redirect("localhost:5173")
+    except Exception as e:
+        print(f"Error authenticating user: {e}")
         return jsonify({
             'status': 'error',
             'message': str(e)
