@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Add Tags</title>
+  <style>
+    body {
+      width: 380px;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+    #tagInput {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 5px;
+    }
+    #tagContainer {
+      margin-bottom: 10px;
+      min-height: 30px;
+    }
+    .tag {
+      display: inline-block;
+      background: #e0e0e0;
+      padding: 5px 10px;
+      margin: 2px;
+      border-radius: 3px;
+    }
+    .tag button {
+      margin-left: 5px;
+      border: none;
+      background: none;
+      cursor: pointer;
+    }
+    #buttons {
+      text-align: right;
+    }
+    button {
+      padding: 5px 10px;
+      margin-left: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h3>Add Tags</h3>
+  <input type="text" id="tagInput" placeholder="Enter tags (comma-separated)">
+  <div id="tagContainer"></div>
+  <div id="buttons">
+    <button id="cancelButton">Cancel</button>
+    <button id="saveButton">Save</button>
+  </div>
+  <script src="tagPopup.js"></script>
+</body>
+</html>

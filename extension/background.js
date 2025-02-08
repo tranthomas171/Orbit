@@ -1,108 +1,126 @@
 // background.js
-const DASHBOARD_URL = 'http://localhost:3000'; // Change this to your dashboard URL
-const API_ENDPOINT = 'http://localhost:5000/api/save'; // Change this to your API endpoint
+const DASHBOARD_URL = 'http://localhost:3000';
+const API_ENDPOINT = 'http://localhost:5000/api/save';
 
-// Create context menu items
+// Create context menu items with two options each
 chrome.runtime.onInstalled.addListener(() => {
-    // Text selection
+  const contexts = [
+    { id: 'Text', context: 'selection', content: 'selectionText' },
+    { id: 'Image', context: 'image', content: 'srcUrl' },
+    { id: 'Video', context: 'video', content: 'srcUrl' },
+    { id: 'Link', context: 'link', content: 'linkUrl' },
+    { id: 'Page', context: 'page', content: 'url' }
+  ];
+
+  contexts.forEach(({ id, context }) => {
+    // Create parent menu item
     chrome.contextMenus.create({
-      id: 'saveText',
-      title: 'Save Text to ORBIT',
-      contexts: ['selection']
+      id: `save${id}Parent`,
+      title: `Send ${id} into Orbit`,
+      contexts: [context]
     });
-  
-    // Image selection
+
+    // Create child menu items
     chrome.contextMenus.create({
-      id: 'saveImage',
-      title: 'Save Image to ORBIT',
-      contexts: ['image']
+      id: `quickSave${id}`,
+      parentId: `save${id}Parent`,
+      title: 'Quick Save',
+      contexts: [context]
     });
-  
-    // Video selection
+
     chrome.contextMenus.create({
-      id: 'saveVideo',
-      title: 'Save Video to ORBIT',
-      contexts: ['video']
-    });
-  
-    // Link selection
-    chrome.contextMenus.create({
-      id: 'saveLink',
-      title: 'Save Link to ORBIT',
-      contexts: ['link']
-    });
-  
-    // Page selection
-    chrome.contextMenus.create({
-      id: 'savePage',
-      title: 'Save Page to ORBIT',
-      contexts: ['page']
+      id: `taggedSave${id}`,
+      parentId: `save${id}Parent`,
+      title: 'Save with Tags',
+      contexts: [context]
     });
   });
+});
+
+// Handle context menu clicks
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  const isQuickSave = info.menuItemId.startsWith('quickSave');
+  const type = info.menuItemId.replace(isQuickSave ? 'quickSave' : 'taggedSave', '').toLowerCase();
   
-  // Handle context menu clicks
-  chrome.contextMenus.onClicked.addListener((info, tab) => {
-    let data = {
-      type: '',
-      content: '',
-      url: tab.url,
-      title: tab.title,
-      timestamp: new Date().toISOString()
-    };
-  
-    switch (info.menuItemId) {
-      case 'saveText':
-        data.type = 'text';
-        data.content = info.selectionText;
-        break;
-      case 'saveImage':
-        data.type = 'image';
-        data.content = info.srcUrl;
-        break;
-      case 'saveVideo':
-        data.type = 'video';
-        data.content = info.srcUrl;
-        break;
-      case 'saveLink':
-        data.type = 'link';
-        data.content = info.linkUrl;
-        break;
-      case 'savePage':
-        data.type = 'page';
-        data.content = tab.url;
-        // Capture the whole page content
-        chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          function: () => document.documentElement.outerHTML
-        }, (result) => {
-          data.content = result[0].result;
-          sendToBackend(data);
-        });
-        return;
-    }
-  
+  let data = {
+    type,
+    content: '',
+    url: tab.url,
+    title: tab.title,
+    timestamp: new Date().toISOString(),
+    tags: []
+  };
+
+  // Set content based on type
+  switch (type) {
+    case 'text':
+      data.content = info.selectionText;
+      break;
+    case 'image':
+    case 'video':
+      data.content = info.srcUrl;
+      break;
+    case 'link':
+      data.content = info.linkUrl;
+      break;
+    case 'page':
+      data.content = tab.url;
+      // Handle page content separately
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        function: () => document.documentElement.outerHTML
+      }, (result) => {
+        data.content = result[0].result;
+        handleSave(data, isQuickSave, tab.id);
+      });
+      return;
+  }
+
+  handleSave(data, isQuickSave, tab.id);
+});
+
+// Handle the save operation
+function handleSave(data, isQuickSave, tabId) {
+  if (isQuickSave) {
     sendToBackend(data);
-  });
-  
-  function sendToBackend(data) {
-    fetch(API_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-      // Show success notification
-      chrome.action.setBadgeText({ text: '✓' });
-      setTimeout(() => chrome.action.setBadgeText({ text: '' }), 2000);
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      // Show error notification
-      chrome.action.setBadgeText({ text: '❌' });
-      setTimeout(() => chrome.action.setBadgeText({ text: '' }), 2000);
+  } else {
+    // Open popup for tag input
+    chrome.windows.create({
+      url: 'tagPopup.html',
+      type: 'popup',
+      width: 400,
+      height: 300
+    }, (window) => {
+      // Store the data temporarily
+      chrome.storage.local.set({
+        pendingSave: {
+          data,
+          sourceTabId: tabId
+        }
+      });
     });
   }
-  
+}
+
+// Send data to backend
+function sendToBackend(data) {
+  fetch(API_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.json())
+  .then(result => {
+    // Show success notification
+    chrome.action.setBadgeText({ text: '✓' });
+    setTimeout(() => chrome.action.setBadgeText({ text: '' }), 2000);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    // Show error notification
+    chrome.action.setBadgeText({ text: '❌' });
+    setTimeout(() => chrome.action.setBadgeText({ text: '' }), 2000);
+  });
+}
