@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Epilogue:ital,wght@0,100..900;1,100..900&family=Nanum+Pen+Script&family=Noto+Serif:ital,wght@0,100..900;1,100..900&family=Parkinsans:wght@300..800&family=Yellowtail&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Epilogue:ital,wght@0,100..900;1,100..900&family=Noto+Serif:ital,wght@0,100..900;1,100..900&family=Parkinsans:wght@300..800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Epilogue', sans-serif;
+        }
+
+        .frame-3 {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #FFFFFF;
+        }
+
+        .background-image {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            left: 0;
+            top: 0;
+            background: url(image.png);
+            background-size: cover;
+            background-position: center;
+        }
+
+        .divider {
+            position: absolute;
+            width: 92%;
+            height: 1px;
+            left: 4%;
+            top: 100px;
+            background: #D9D9D9;
+        }
+
+        .header-text {
+            position: absolute;
+            width: 400px;
+            height: 50px;
+            left: 100px;
+            top: 40px;
+            font-family: 'Nanum Pen Script', serif;
+            font-weight: 700;
+            font-size: 48px;
+            line-height: 50px;
+            color: #FFFFFF;
+            opacity: 0.77;
+        }
+
+        .nav-links {
+            position: absolute;
+            top: 15px;
+            right: 280px;
+            display: flex;
+            gap: 60px; /* Increased gap for more even spacing */
+        }
+
+        .nav-item {
+            font-family: 'Epilogue', sans-serif;
+            font-style: normal;
+            font-weight: 400;
+            font-size: 20px;
+            line-height: 24px;
+            color: #FFFFFF;
+            text-decoration: none;
+            opacity: 0.6; /* Lower initial opacity */
+            transition: all 0.3s ease; /* Smooth transition for all changes */
+            transform: translateY(0); /* Initial position */
+        }
+
+        .nav-item:hover {
+            opacity: 1;
+            transform: translateY(-3px); /* Slight upward movement on hover */
+        }
+
+        .logout-container {
+            position: absolute;
+            right: 40px;
+            top: 10px;
+        }
+
+        .logout-button {
+            position: relative;
+            width: 120px;
+            height: 35px;
+            background: #FFFFFF;
+            box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25), inset 2px 4px 4px rgba(0, 0, 0, 0.25);
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .logout-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .logout-text {
+            position: absolute;
+            width: 80px;
+            height: 24px;
+            left: 20px;
+            top: 5px;
+            font-family: 'Epilogue', sans-serif;
+            font-style: normal;
+            font-weight: 400;
+            font-size: 20px;
+            line-height: 24px;
+            color: #000000;
+        }
+
+        .url-container {
+            position: absolute;
+            top: 140px;
+            left: 4%;
+            width: 92%;
+            height: calc(100vh - 160px);
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow-y: auto;
+        }
+
+        .url-container h2 {
+            font-family: 'Epilogue', sans-serif;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .url-list {
+            list-style: none;
+            margin-top: 15px;
+        }
+
+        .url-item {
+            padding: 8px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: #FFFFFF;
+            font-size: 14px;
+            transition: transform 0.3s ease, background 0.3s ease;
+        }
+
+        .url-item:hover {
+            transform: translateX(5px);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .url-item a {
+            color: #FFFFFF;
+            text-decoration: none;
+        }
+
+        .url-item a:hover {
+            text-decoration: underline;
+        }
+
+        .url-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .url-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .url-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .url-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="frame-3">
+        <div class="background-image"></div>
+        <div class="divider"></div>
+        <h1 class="header-text">Navigate your orbit ...</h1>
+        
+        <nav class="nav-links">
+            <a href="#" class="nav-item">Everything</a>
+            <a href="#" class="nav-item">Images</a>
+            <a href="#" class="nav-item">Text</a>
+            <a href="#" class="nav-item">Audio</a>
+        </nav>
+        
+        <div class="logout-container">
+            <button class="logout-button">
+                <span class="logout-text">Log Out</span>
+            </button>
+        </div>
+
+        <div class="url-container">
+            <h2 style="color: #FFFFFF;">Saved URLs</h2>
+            <ul class="url-list" id="urlList"></ul>
+        </div>
+    </div>
+    <script src="dashboard.js"></script>
+</body>
+</html>
