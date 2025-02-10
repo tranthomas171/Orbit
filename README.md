@@ -14,30 +14,9 @@
 - **Industry Professionals**: Manage digital resources for projects and collaboration.
 - **Casual Browsers**: Save and revisit interesting content effortlessly.
 
-## Todo List
-### Frontend
-- [x] Set up React web dashboard.
-- [x] Design a simple, user-friendly interface for search and data management.
-- [x] Integrate semantic search functionality.
-- [ ] Implement item deletion capabilities.
-
-### Backend
-- [x] Build a REST API with FastAPI or Flask.
-- [x] Configure ChromaDB for persistent vector storage.
-- [x] Integrate CLIP and CLAP embeddings for tri-modal search.
-- [x] Implement semantic and keyword search endpoints.
-
-### Chrome Extension
-- [x] Develop a Manifest V3 extension.
-- [x] Add functionality to save text, images, videos, URLs, and webpages.
-- [x] Set up temporary storage using Chrome Storage API.
-
-### Deployment
-- [x] Select a deployment platform (e.g., Fly.io, Render).
-- [ ] Deploy backend and frontend components.
-
-### Future Enhancements
-- [ ] Create an iOS app for mobile functionality.
-- [ ] Add advanced filtering options for search.
-- [ ] Implement data visualization features in the dashboard.
-
+## Deepest Diver Award by CMU Scotty Labs (Most significant innovation that makes use of emerging, groundbreaking technology.)
+### Team Members
+- **Akhil Bodahanapati - akb198@pitt.edu
+- **Ethan Wang - ethan.wanq@gmail.com
+- **Eric Liu - eyl17@pitt.edu
+- **Thomas Tran (tranthomas171@pitt.edu)
