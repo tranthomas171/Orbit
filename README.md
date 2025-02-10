@@ -13,7 +13,7 @@
 - **Researchers**: Store and search through academic papers, data, and media.
 - **Industry Professionals**: Manage digital resources for projects and collaboration.
 - **Casual Browsers**: Save and revisit interesting content effortlessly.
-====
+
 ## Todo List
 ### Frontend
 - [ ] Set up React web dashboard.
