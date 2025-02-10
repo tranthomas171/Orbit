@@ -16,24 +16,24 @@
 
 ## Todo List
 ### Frontend
-- [ ] Set up React web dashboard.
-- [ ] Design a simple, user-friendly interface for search and data management.
-- [ ] Integrate semantic search functionality.
+- [*] Set up React web dashboard.
+- [*] Design a simple, user-friendly interface for search and data management.
+- [*] Integrate semantic search functionality.
 - [ ] Implement item deletion capabilities.
 
 ### Backend
-- [ ] Build a REST API with FastAPI or Flask.
-- [ ] Configure ChromaDB for persistent vector storage.
-- [ ] Integrate CLIP and CLAP embeddings for tri-modal search.
-- [ ] Implement semantic and keyword search endpoints.
+- [*] Build a REST API with FastAPI or Flask.
+- [*] Configure ChromaDB for persistent vector storage.
+- [*] Integrate CLIP and CLAP embeddings for tri-modal search.
+- [*] Implement semantic and keyword search endpoints.
 
 ### Chrome Extension
-- [ ] Develop a Manifest V3 extension.
-- [ ] Add functionality to save text, images, videos, URLs, and webpages.
-- [ ] Set up temporary storage using Chrome Storage API.
+- [*] Develop a Manifest V3 extension.
+- [*] Add functionality to save text, images, videos, URLs, and webpages.
+- [*] Set up temporary storage using Chrome Storage API.
 
 ### Deployment
-- [ ] Select a deployment platform (e.g., Fly.io, Render).
+- [*] Select a deployment platform (e.g., Fly.io, Render).
 - [ ] Deploy backend and frontend components.
 
 ### Future Enhancements
