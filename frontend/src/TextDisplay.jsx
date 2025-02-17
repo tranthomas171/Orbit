@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useTextDisplayData from './useTextDisplayData';
 import DraggableCard from './DraggableCard';
 import { X } from 'lucide-react';
@@ -6,51 +6,56 @@ import { X } from 'lucide-react';
 const styles = {
   container: {
     position: 'relative',
-    width: '100vw',
+    width: '100%',
     minHeight: '100vh',
     padding: '20px',
     overflowY: 'auto',
     backgroundColor: 'rgba(0,0,0,0)',
   },
-  text: {
-    fontSize: '14px',
-    lineHeight: '1.4',
-    color: '#333333',
+  gridContainer: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+    gap: '8px',
+    padding: '8px',
+    width: '100%',
+    maxWidth: '1400px',
+    margin: '0 auto',
+  },
+  card: {
+    position: 'relative',
+    aspectRatio: '1',
+    borderRadius: '0',
+    padding: '0',
     overflow: 'hidden',
+    cursor: 'pointer',
+    border: 'none',
+    backgroundColor: 'transparent',
+  },
+  imageContainer: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
   },
   image: {
     width: '100%',
-    height: 'auto',
-    borderRadius: '4px',
-    marginBottom: '8px',
+    height: '100%',
+    objectFit: 'cover',
+  },
+  textContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: '12px',
+    background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
+    color: 'white',
+    fontSize: '14px',
+    lineHeight: '1.4',
   },
   loading: {
     padding: '16px',
-    color: '#666666',
+    color: '#ffffff',
     textAlign: 'center',
-  },
-  loadMoreButton: {
-    position: 'fixed',
-    bottom: '20px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    backgroundColor: '#2563eb',
-    color: '#fff',
-    padding: '12px 24px',
-    border: 'none',
-    borderRadius: '4px',
-    fontSize: '16px',
-    cursor: 'pointer',
-    zIndex: 1100,
-  },
-  showMoreButton: {
-    background: 'none',
-    border: 'none',
-    color: '#2563eb',
-    cursor: 'pointer',
-    fontSize: '12px',
-    padding: '4px 0',
-    marginLeft: '8px',
   },
   modal: {
     position: 'fixed',
@@ -68,26 +73,6 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
   },
-  modalHeader: {
-    padding: '16px 24px',
-    borderBottom: '1px solid #eee',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: '18px',
-    fontWeight: 500,
-    color: '#111',
-  },
-  modalContent: {
-    padding: '24px',
-    overflowY: 'auto',
-    flex: 1,
-    fontSize: '16px',
-    lineHeight: '1.6',
-    color: '#333',
-  },
   modalOverlay: {
     position: 'fixed',
     top: 0,
@@ -97,59 +82,26 @@ const styles = {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     zIndex: 1999,
   },
-  closeButton: {
-    background: 'none',
-    border: 'none',
-    padding: '4px',
-    cursor: 'pointer',
-    color: '#666',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '4px',
-    transition: 'background-color 0.2s',
-    ':hover': {
-      backgroundColor: '#f3f4f6',
-    },
-  },
-};
-
-const generatePosition = (index, totalItems) => {
-  const columns = Math.ceil(Math.sqrt(totalItems));
-  const rows = Math.ceil(totalItems / columns);
-  
-  const column = index % columns;
-  const row = Math.floor(index / columns);
-  
-  const baseLeft = (column / columns) * 100;
-  const baseTop = 10 + ((row / rows) * 70);
-  
-  return {
-    left: Math.max(0, Math.min(100, baseLeft)),
-    top: Math.max(10, Math.min(85, baseTop)),
-    zIndex: Math.floor(Math.random() * 10),
-  };
 };
 
 const TextDisplay = ({ initialItems = [], isSearchMode = false }) => {
-  const { items, page, totalCount, loading, error, fetchPage } = useTextDisplayData(1, 5);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const observerRef = useRef();
+  const loadingRef = useRef(null);
+
+  const { 
+    items, 
+    page, 
+    totalCount, 
+    loading, 
+    error, 
+    fetchPage 
+  } = useTextDisplayData(1, 20);
 
   const displayItems = isSearchMode ? initialItems : items;
 
-  const positionedItems = displayItems.map((item, idx) => {
-    const pos = generatePosition(idx, displayItems.length);
-    return { ...item, position: pos };
-  });
-
-  const truncateText = (text, maxLength = 100) => {
-    if (!text) return '';
-    return text.length <= maxLength ? text : text.slice(0, maxLength) + '...';
-  };
-
-  const handleShowMore = (e, item) => {
-    e.stopPropagation();
+  const handleItemClick = (item) => {
     setSelectedItem(item);
     setShowModal(true);
   };
@@ -160,27 +112,68 @@ const TextDisplay = ({ initialItems = [], isSearchMode = false }) => {
   };
 
   const renderContent = (item) => {
-    if (item.type === 'image') {
-      return (
-        <img 
-          src={item.data} 
-          alt={item.metadata.title || 'Image'} 
-          style={styles.image}
-        />
-      );
-    }
+    const isImage = item.type === 'image' || (item.metadata && item.metadata.type === 'image');
+    
     return (
-      <div style={styles.text}>
-        {truncateText(item.document)}
-        <button 
-          style={styles.showMoreButton}
-          onClick={(e) => handleShowMore(e, item)}
-        >
-          Show More
-        </button>
+      <div style={styles.imageContainer}>
+        {isImage ? (
+          <img 
+            src={item.data || '/api/placeholder/400/400'} 
+            alt={item.metadata?.title || 'Image'} 
+            style={styles.image}
+          />
+        ) : (
+          <div style={{
+            ...styles.image,
+            backgroundColor: '#f0f0f0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}>
+            <span style={{ fontSize: '14px', color: '#333' }}>
+              {(item.document || '').substring(0, 100)}...
+            </span>
+          </div>
+        )}
+        <div style={styles.textContent}>
+          {item.metadata?.title && (
+            <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+              {item.metadata.title}
+            </div>
+          )}
+          {item.metadata?.timestamp && (
+            <div style={{ fontSize: '12px', opacity: '0.8' }}>
+              {new Date(item.metadata.timestamp).toLocaleDateString()}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && !loading && items.length < totalCount) {
+          fetchPage(page + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadingRef.current) {
+      observer.observe(loadingRef.current);
+    }
+
+    observerRef.current = observer;
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [loading, items.length, totalCount, page, fetchPage]);
 
   useEffect(() => {
     fetchPage(1);
@@ -188,42 +181,38 @@ const TextDisplay = ({ initialItems = [], isSearchMode = false }) => {
 
   return (
     <div style={styles.container}>
-      {positionedItems.map((item) => (
-        <DraggableCard
-          key={item.id}
-          item={item}
-          initialPosition={item.position}
-          renderContent={renderContent}
-          metadata={item.metadata}
-          onMouseEnter={() => {}}
-          onMouseLeave={() => {}}
-        />
-      ))}
+      <div style={styles.gridContainer}>
+        {displayItems.map((item, index) => (
+          <div 
+            key={item.id || index}
+            style={styles.card}
+            onClick={() => handleItemClick(item)}
+          >
+            {renderContent(item)}
+          </div>
+        ))}
+      </div>
 
-      {!isSearchMode && loading && <div style={styles.loading}>Loading more items...</div>}
-      {!isSearchMode && !loading && items.length < totalCount && (
-        <button 
-          style={styles.loadMoreButton}
-          onClick={() => fetchPage(page + 1)}
-        >
-          Load More
-        </button>
+      {!isSearchMode && (
+        <div ref={loadingRef} style={styles.loading}>
+          {loading ? 'Loading more items...' : ''}
+        </div>
       )}
 
       {showModal && selectedItem && (
         <>
           <div style={styles.modalOverlay} onClick={closeModal} />
           <div style={styles.modal}>
-            <div style={styles.modalHeader}>
-              <div style={styles.modalTitle}>
-                {selectedItem.metadata?.title || 'Content Details'}
-              </div>
-              <button style={styles.closeButton} onClick={closeModal}>
-                <X size={20} />
-              </button>
-            </div>
-            <div style={styles.modalContent}>
-              {selectedItem.document}
+            <div style={{ padding: '20px' }}>
+              {selectedItem.type === 'image' ? (
+                <img 
+                  src={selectedItem.data} 
+                  alt={selectedItem.metadata?.title || 'Image'}
+                  style={{ width: '100%', borderRadius: '8px' }}
+                />
+              ) : (
+                <div style={{ color: '#333' }}>{selectedItem.document}</div>
+              )}
               {selectedItem.metadata?.timestamp && (
                 <div style={{ marginTop: '16px', fontSize: '14px', color: '#666' }}>
                   {new Date(selectedItem.metadata.timestamp).toLocaleString()}
